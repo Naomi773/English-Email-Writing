@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Business Email Rescue Kit</title>
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<style>
+/* Layout: one narrow column, one screen = one job. Home picks a task, a stage lists its questions, a question page answers one question with collapsed groups. */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --sunk:#eef0f4; --ink:#1a2130; --muted:#647083; --line:#e1e5ec;
+  --accent:#2747c8; --accent-soft:#e8ecfb; --bad:#b0281f; --bad-soft:#fcefed; --good:#17734a; --good-soft:#e8f4ee;
+  --warn:#9a5600; --warn-soft:#fdf3e4; --mark:#fff0b8; --mark-ink:#5b4300;
+  --f-ui:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-text:"Source Serif 4",Georgia,"Noto Serif SC",serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10141b; --surface:#181d27; --sunk:#1f2531; --ink:#e7eaf0; --muted:#9ca5b5; --line:#2b3242;
+  --accent:#97abff; --accent-soft:#212a46; --bad:#ff9087; --bad-soft:#3a2020; --good:#74d4a3; --good-soft:#173125;
+  --warn:#f1b65e; --warn-soft:#352813; --mark:#4a3d12; --mark-ink:#ffe7a0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10141b; --surface:#181d27; --sunk:#1f2531; --ink:#e7eaf0; --muted:#9ca5b5; --line:#2b3242;
+  --accent:#97abff; --accent-soft:#212a46; --bad:#ff9087; --bad-soft:#3a2020; --good:#74d4a3; --good-soft:#173125;
+  --warn:#f1b65e; --warn-soft:#352813; --mark:#4a3d12; --mark-ink:#ffe7a0; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:16px;line-height:1.65}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+.page{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:0 96px}
+
+/* slim top bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.bar .in{padding:10px 16px;display:flex;align-items:center;gap:10px;min-height:56px}
+.back{border:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:15px;white-space:nowrap}
+.crumb{flex:1;min-width:0;font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crumb b{color:var(--ink);font-weight:500}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:14px;white-space:nowrap}
+
+/* headings */
+.kicker{font-size:13px;color:var(--accent);font-weight:500;margin:32px 0 6px}
+h1{font-size:clamp(24px,5vw,30px);line-height:1.3;margin:0;font-weight:700;text-wrap:balance}
+h1 .en{display:block;font-family:var(--f-text);font-weight:400;font-size:17px;color:var(--muted);margin-top:4px}
+.lede{color:var(--muted);margin:10px 0 0;font-size:15.5px}
+.when{margin:14px 0 0;font-size:15px;color:var(--muted)}
+.when b{color:var(--ink);font-weight:500}
+.label{font-size:13px;color:var(--muted);margin:36px 0 12px;font-weight:500}
+
+/* home */
+.search{position:relative;margin-top:22px}
+.search input{width:100%;font:inherit;font-size:17px;padding:14px 44px 14px 16px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink)}
+.search input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.search input::-webkit-search-cancel-button{display:none}
+.search .clr{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);cursor:pointer;padding:8px;font-size:18px}
+.quick{display:flex;flex-wrap:wrap;gap:10px}
+.chip{border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);background:var(--warn-soft);border-radius:12px;padding:10px 14px;font-size:15px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--warn)}
+.stages{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stage{display:flex;gap:14px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:16px;cursor:pointer;min-width:0}
+.stage:hover{border-color:var(--accent)}
+.stage .n{flex:0 0 32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:15px}
+.stage b{display:block;font-size:17px}
+.stage span{display:block;font-size:13.5px;color:var(--muted);line-height:1.5;margin-top:2px}
+
+/* question list */
+.qlist{display:flex;flex-direction:column;gap:10px;margin-top:24px}
+.q{display:flex;align-items:center;gap:14px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:16px 18px;cursor:pointer;width:100%}
+.q:hover{border-color:var(--accent)}
+.q .tx{flex:1;min-width:0}
+.q b{display:block;font-size:17px;font-weight:500;line-height:1.45}
+.q span{display:block;font-size:14px;color:var(--muted);margin-top:3px;line-height:1.5}
+.q .arr{color:var(--muted);font-size:20px}
+.steps{display:flex;gap:6px;margin-top:18px}
+.steps i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.steps i.on{background:var(--accent)}
+
+/* question page */
+.top{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.formula{border-radius:14px;padding:14px 16px;background:var(--accent-soft);font-size:16px;font-weight:500;line-height:1.6}
+.formula small{display:block;font-size:12.5px;color:var(--accent);font-weight:500;margin-bottom:2px}
+.tip{font-size:14.5px;color:var(--muted);padding:2px 2px 2px 14px;border-left:3px solid var(--line);line-height:1.65}
+.groups{display:flex;flex-direction:column;gap:12px;margin-top:28px}
+details.grp{scroll-margin-top:72px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+details.grp>summary{list-style:none;cursor:pointer;padding:16px 18px;display:flex;align-items:center;gap:12px}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary .tx{flex:1;min-width:0}
+details.grp>summary b{display:block;font-size:16.5px;font-weight:500}
+details.grp>summary span{font-size:13px;color:var(--muted)}
+details.grp>summary .cnt{font-size:13px;color:var(--muted);white-space:nowrap}
+details.grp>summary .chev{transition:transform .2s;color:var(--muted)}
+details.grp[open]>summary .chev{transform:rotate(90deg)}
+details.grp[open]>summary{border-bottom:1px solid var(--line)}
+.items{display:flex;flex-direction:column;padding:6px 0}
+.more{margin:8px 18px 12px;border:1px dashed var(--line);background:none;border-radius:10px;padding:10px;cursor:pointer;color:var(--accent);font-size:14.5px}
+
+/* items */
+.ph{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;align-items:start;padding:12px 18px}
+.ph+.ph,.up+.up,.ph+.up,.up+.ph{border-top:1px solid var(--line)}
+.ph .t,.up .t{font-family:var(--f-text);font-size:17.5px;line-height:1.5;overflow-wrap:anywhere}
+.ph .z,.up .o{font-size:13.5px;color:var(--muted);line-height:1.5}
+.ph .z em,.up .o em{font-style:normal;color:var(--accent)}
+.act{grid-row:1 / span 2;grid-column:2;align-self:center}
+.up{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 14px;padding:12px 18px}
+.var{background:var(--mark);color:var(--mark-ink);border-radius:4px;padding:0 4px;font-family:var(--f-ui);font-size:.85em}
+.cp{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:7px 12px;font-size:13.5px;cursor:pointer;color:var(--ink);white-space:nowrap;min-height:38px}
+.cp:hover{border-color:var(--accent);color:var(--accent)}
+.cp.done{border-color:var(--good);color:var(--good)}
+.blk{padding:10px 18px}
+
+details.tpl{border-top:1px solid var(--line)}
+.items>details.tpl:first-child{border-top:0}
+details.tpl>summary{list-style:none;cursor:pointer;padding:13px 18px;display:flex;gap:10px;align-items:baseline}
+details.tpl>summary::-webkit-details-marker{display:none}
+details.tpl>summary::before{content:"+";color:var(--accent);font-weight:700;width:12px;flex:0 0 12px}
+details.tpl[open]>summary::before{content:"−"}
+details.tpl>summary b{font-weight:500;font-size:16px}
+details.tpl>summary span{font-size:13px;color:var(--muted)}
+.tbody{padding:0 18px 16px 40px;display:flex;flex-direction:column;gap:12px}
+.para .lbl{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.para .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.para .t{font-family:var(--f-text);font-size:17px;line-height:1.6;overflow-wrap:anywhere;white-space:pre-line}
+.para.ex .t{color:var(--muted);font-size:16px}
+
+.cmp{border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.items .cmp{margin:8px 14px}
+.cmp .r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px 16px;align-items:start}
+.cmp .k{grid-column:1 / -1;font-size:12.5px;font-weight:500;margin-bottom:-8px}
+.cmp .bad{background:var(--bad-soft)} .cmp .bad .k{color:var(--bad)}
+.cmp .bad .t{color:var(--muted);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+.cmp .good{background:var(--good-soft)} .cmp .good .k{color:var(--good)}
+.cmp .t{font-family:var(--f-text);font-size:16.5px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-line}
+.cmp .why{padding:10px 16px;font-size:14px;color:var(--muted);border-top:1px solid var(--line)}
+
+.sub{padding:14px 18px;display:flex;flex-direction:column;gap:6px}
+.sub+.sub{border-top:1px solid var(--line)}
+.sub .say{font-family:var(--f-text);font-size:17.5px;font-weight:600}
+.sub .hid{font-size:15px;color:var(--bad)}
+.sub .fix{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;font-size:14.5px}
+.sub small{display:block;font-size:12px;color:var(--muted)}
+.rule{padding:12px 18px}
+.rule+.rule{border-top:1px solid var(--line)}
+.rule b{display:block;font-family:var(--f-text);font-size:16.5px;font-weight:600}
+.rule span{font-size:14.5px;color:var(--muted)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.tbl table{border-collapse:collapse;width:100%;min-width:540px;font-size:14px}
+.tbl th,.tbl td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-weight:500;color:var(--muted);font-size:13px}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td:first-child{font-weight:500;white-space:nowrap}
+.chk{display:flex;gap:12px;align-items:flex-start;padding:12px 18px;cursor:pointer;font-size:16px}
+.chk+.chk{border-top:1px solid var(--line)}
+.chk input{margin-top:5px;accent-color:var(--good);width:20px;height:20px;flex:0 0 auto}
+.chk:has(input:checked) span{color:var(--muted);text-decoration:line-through}
+details.mail{border-top:1px solid var(--line)}
+.items>details.mail:first-child{border-top:0}
+details.mail>summary{list-style:none;cursor:pointer;padding:14px 18px}
+details.mail>summary::-webkit-details-marker{display:none}
+details.mail>summary b{font-weight:500;font-size:16.5px}
+details.mail>summary span{display:block;font-size:13.5px;color:var(--muted)}
+.mailbody{display:flex;flex-direction:column;gap:12px;padding:0 14px 16px}
+.mailbody .m{border-radius:12px;padding:14px 16px}
+.mailbody .m.bad{background:var(--bad-soft)} .mailbody .m.good{background:var(--good-soft)}
+.mailbody .k{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:500;margin-bottom:8px}
+.mailbody .bad .k{color:var(--bad)} .mailbody .good .k{color:var(--good)}
+.mailbody pre{margin:0;white-space:pre-wrap;font-family:var(--f-text);font-size:15.5px;line-height:1.6;overflow-wrap:anywhere}
+.mailbody .notes{font-size:14px;color:var(--muted);padding:0 4px}
+
+/* bottom nav */
+.next{display:flex;flex-direction:column;gap:10px;margin-top:40px}
+.next .q{background:var(--accent-soft);border-color:transparent}
+.next .q b{color:var(--accent)}
+
+/* search results */
+.res{display:flex;flex-direction:column;gap:14px;margin-top:20px}
+.rcard{border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden}
+.rcard .rh{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.rcard .rh b{font-size:16.5px;font-weight:500}
+.rcard .rh span{display:block;font-size:13px;color:var(--muted)}
+.rcard .go{border:0;background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:14px;white-space:nowrap}
+.empty{border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:20px;color:var(--muted);margin-top:20px}
+.empty b{color:var(--ink)}
+
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:600px){
+  .stages{grid-template-columns:minmax(0,1fr)}
+  .tbody{padding-left:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+/* sidebar: docked column on wide screens, slide-over drawer on narrow ones */
+.layout{display:block}
+.side{display:none}
+.side-in{padding:12px 12px 48px;display:flex;flex-direction:column;gap:2px}
+.side-top{display:flex;justify-content:space-between;align-items:center;padding:4px 10px 8px;font-size:13px;color:var(--muted)}
+.side-x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:13px;padding:4px 6px;border-radius:8px}
+.side-x:hover{background:var(--sunk);color:var(--ink)}
+.sl,.st,.sq{display:flex;width:100%;text-align:left;border:0;background:none;cursor:pointer;border-radius:10px;padding:8px 10px;align-items:center;gap:10px;font-size:15px;line-height:1.4}
+.sl:hover,.st:hover,.sq:hover{background:var(--sunk)}
+.side .on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.sn{width:22px;height:22px;border-radius:50%;background:var(--sunk);display:grid;place-items:center;font-size:12px;flex:0 0 22px;color:var(--muted)}
+.side .on .sn,.snode.ex .sn{background:var(--accent);color:var(--surface)}
+.sc{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400}
+.stree{display:flex;flex-direction:column;gap:2px;margin:6px 0;padding:8px 0;border-block:1px solid var(--line)}
+.snode ol{list-style:none;margin:2px 0 8px 20px;padding:0 0 0 10px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px}
+.sq{font-size:14px;color:var(--muted);padding:6px 10px}
+.comm{font-weight:500}
+.comm .badge{margin-left:auto;font-size:11.5px;font-weight:500;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.scrim{display:none}
+@media (min-width:1000px){
+  body.side-open .layout{display:grid;grid-template-columns:288px minmax(0,1fr)}
+  body.side-open .side{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 57px);height:calc(100vh - 57px);overflow:auto;border-right:1px solid var(--line);background:var(--surface)}
+}
+@media (max-width:999.98px){
+  .side{display:block;position:fixed;z-index:40;left:0;top:0;bottom:0;width:min(86vw,320px);background:var(--surface);border-right:1px solid var(--line);overflow:auto;transform:translateX(-102%);visibility:hidden;transition:transform .22s,visibility .22s;padding-top:env(safe-area-inset-top,0px)}
+  body.side-open .side{transform:none;visibility:visible}
+  .scrim{position:fixed;inset:0;background:rgba(8,12,18,.45);z-index:35}
+  body.side-open .scrim{display:block}
+}
+
+/* community */
+.next .q.plain{background:var(--surface);border-color:var(--line)}
+.next .q.plain b{color:var(--ink)}
+.q.commcard{background:var(--accent-soft);border-color:transparent}
+.q.commcard b{color:var(--accent)}
+.commtop{display:flex;flex-direction:column;gap:12px;margin-top:24px}
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px;font-size:15px;color:var(--muted)}
+#askbox{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:18px}
+#askbox label,.ansform label{font-size:14.5px;font-weight:500;margin-top:10px}
+#askbox label:first-child{margin-top:0}
+#askbox label em{font-style:normal;font-weight:400;color:var(--muted);font-size:12.5px;margin-left:6px}
+#askbox input:not([type=checkbox]),#askbox textarea,#askbox select,.ansform textarea,.ansform select{width:100%;font:inherit;font-size:16px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+#askbox input:focus,#askbox textarea:focus,#askbox select:focus,.ansform textarea:focus,.ansform select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#askbox label.inline{display:flex;gap:8px;align-items:center;font-weight:400;margin-top:12px}
+#askbox label.inline input{width:18px;height:18px;accent-color:var(--accent)}
+.from{font-size:13px;color:var(--accent);margin:0 0 4px}
+.err{color:var(--bad);font-size:14px;margin:8px 0 0}
+.formact{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.primary{border:0;background:var(--accent);color:var(--surface);border-radius:10px;padding:10px 20px;font-weight:500;cursor:pointer}
+.primary:disabled{opacity:.6;cursor:default}
+.ghost{border:1px solid var(--line);background:none;border-radius:10px;padding:9px 16px;cursor:pointer;font-size:14.5px}
+.ghost:hover{background:var(--sunk)}
+.danger{color:var(--bad)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;cursor:pointer;font-size:14px}
+.seg button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seg span{opacity:.7;margin-left:2px}
+.qcards{display:flex;flex-direction:column;gap:12px;margin-top:14px}
+.qc{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:16px 18px}
+.qh{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;border-radius:999px;padding:2px 10px;font-weight:500;white-space:nowrap}
+.s-open{background:var(--warn-soft);color:var(--warn)}
+.s-ans{background:var(--good-soft);color:var(--good)}
+.s-add{background:var(--accent-soft);color:var(--accent)}
+.meta{font-size:13px;color:var(--muted)}
+.qc h3{font-size:17px;margin:10px 0 0;font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+.qb{margin:6px 0 0;color:var(--muted);font-size:15px;white-space:pre-line;overflow-wrap:anywhere}
+.ans{margin-top:12px;background:var(--good-soft);border-radius:12px;padding:12px 14px}
+.ans .al{font-size:12.5px;color:var(--good);font-weight:500}
+.ans p{margin:4px 0 0;font-family:var(--f-text);font-size:16.5px;line-height:1.6;white-space:pre-line;overflow-wrap:anywhere}
+.adm{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.adm summary{cursor:pointer;font-size:14px;color:var(--accent)}
+.ansform{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.empty{margin-top:14px}
+.en-note{display:flex;gap:8px;align-items:baseline;font-family:var(--f-text);font-style:italic;font-size:14.5px;line-height:1.55;color:var(--muted);margin-top:4px;grid-column:1}
+.en-note span{font-family:var(--f-ui);font-style:normal;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:4px;padding:0 4px;flex:0 0 auto;transform:translateY(-1px)}
+.top>.en-note{padding:0 2px 0 14px;margin-top:-4px}
+body.hide-en .en-note{display:none}
+.tone{font-size:13px;color:var(--accent);background:var(--accent-soft);border-radius:8px;padding:4px 10px;align-self:flex-start;grid-column:1;justify-self:start;margin-top:4px}
+.entoggle{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px;color:var(--muted);cursor:pointer;margin-top:14px}
+.side .entoggle{margin:0 10px 8px;align-self:flex-start}
+.entoggle .sw{width:28px;height:16px;border-radius:999px;background:var(--line);position:relative;flex:0 0 28px;transition:background .15s}
+.entoggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.entoggle[aria-pressed="true"] .sw{background:var(--accent)}
+.entoggle[aria-pressed="true"] .sw::after{transform:translateX(12px)}
+.rule .en-note,.why .en-note{margin-top:6px}
+</style>
+
+<div class="bar" id="bar"><div class="in" id="barin"></div></div>
+<div class="layout"><aside class="side" id="side" aria-label="Contents"></aside><div class="page" id="view"></div></div>
+<div class="scrim" id="scrim"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="text/plain" id="src">
+@tab prep | Before you write | | Before you start: settle the tone, then the greeting and your first line.
+
+@sec tone | What tone should this email take? | Pick the right tone | When you're unsure whether to be formal or casual, or worried about being misread | tone formal informal casual
+!tip It's easy to run out of words or worry about sounding rude, and in some situations (an urgent email, for example) the tone you choose can affect how fast business moves. This page helps you settle the tone first.
+!tip Tone refers to the emotional context of your email, the level of formality and informality you adopt in communicating and your attitude towards your topic. Tone lets your readers know that you are communicating specifically with them and not with just anyone.
+|Tone|Vibe|Best used for|Subtext trap
+|Formal|Respectful, distant, structured|Legal docs, board updates, first-time outreach to C-suite|Can sound "robotic" or "cold" if overused
+|Direct|Confident, concise, action-oriented|Deadlines, escalations, performance reviews|Can sound "aggressive" or "demanding" if missing a softener
+|Empathetic|Warm, patient, supportive|Apologies, complaint handling, internal morale|Can sound "vague" or "weak" if you over-soften the action item
+|Enthusiastic|Energetic, optimistic, collaborative|Product launches, team motivation, event invites|Can sound "fluffy" or "insincere" if not backed by facts
+%Summary: when writing email, consider
+r Focus on what you can do for your reader ;; Focus on what you can do for your reader
+r Adopt a "reader-centred" approach ;; Put yourself in the reader's position
+r Use positive language throughout ;; Use positive language from start to finish
+r Adopt a more natural, conversational tone ;; Sound natural, as if you were talking
+r Maintain the same tone throughout ;; Keep one tone through the whole email
+%Informal tone (personal, simple, and direct)
+x The sales report was finished by me yesterday. ;; I finished the sales report yesterday. ;; Prefer the active voice to the passive voice.
+x The meeting, which will be held at 2 PM, is for the purpose of reviewing the budget, and you are requested to bring your notes with you. ;; The meeting is at 2 PM. We will review the budget. Please bring your notes. ;; Use shorter sentences.
+x Feedback is required on this draft. A reply is needed before proceeding. ;; We need your feedback on this draft. I will wait for your reply before we proceed. ;; Use personal pronouns (I, we, they, etc.).
+x This is to inform you that the deadline is Friday. Please communicate any difficulties. ;; Just a quick heads-up – the deadline is this Friday. Let me know if you run into any trouble! ;; Use elements of conversation.
+%Formal tone (impersonal and objective)
+x I processed the invoice this morning. ;; The invoice was processed this morning. ;; Use passive voice to achieve a more objective focus.
+x We have reviewed and approved your contract. ;; The contract has been reviewed and approved. ;; Avoid using personal references (I, you, we, etc.) unless they are necessary.
+x Our team will present the quarterly results at the conference. ;; The quarterly results will be presented at the conference. ;; Focus on what is done rather than who did it.
+x Please send the money to the accounts folks later today. ;; Please forward the remittance to the accounting department by 5:00 PM. ;; Use precise words and expressions.
+%5 subtext principles
+r Certainty vs. Possibility: will vs. may ;; Subtext says "I am decisive." Use certainty for pricing/launches; use possibility for speculative features.
+r Agency vs. Obligation: we invite vs. you must ;; Subtext says "You have a choice." Even when enforcing a requirement, frame it as a mutual next step.
+r Clarity vs. Ambiguity: specific dates vs. soon ;; Subtext says "I respect your time." Vague subtext signals you are hiding something or are disorganized.
+r Inclusion vs. Exclusivity: we vs. I / you ;; Subtext says "We are in this together." Use "we" for policies; use "I" for personal responsibility; use "you" sparingly in negative contexts.
+r Validity vs. Defensiveness: Here is why vs. The reason is because ;; Subtext says "I am justifying fairly." Defensive subtext (forced us to, we had no choice) makes the reader distrust you. Frame changes as strategic choices, not reactive necessities.
+
+@sec reader | How do I get people to cooperate? | Reader-centred & positive | When you need someone to act, need to point out a problem, or need to correct a team member | you attitude
+!tip Talk about what the reader gains, not what you need. When you point out a problem, be firm but fair: the aim is to fix it, not to embarrass anyone.
+%Create reader-based messages
+r Emphasise "you" over "me" ;; Whenever possible, maintain a personal touch and emphasise "you" over "me" in your email.
+r Focus on the reader's benefits and needs ;; We create the "you" attitude by highlighting the reader's benefits and concentrating on the reader's needs instead of your own.
+r It's not just swapping "we" for "you" ;; However, we cannot create the "you" attitude by simply using "you" instead of "we" or "I" all the time.
+x I want to emphasise the importance of following safety procedures. ;; Your safety is important to this company. Please follow all safety procedures carefully so as to avoid accidents. ;; When writing to staff, start from their own safety
+x Since we have to update our training records, please fill in the attached form and return it to us by 31 May. ;; We would like to update our training records so that we can arrange appropriate training programmes for your career development. Would you please complete the attached form and return it to us by 31 May? ;; We believe that we can get the response we want more easily by adopting the "you" attitude.
+%Emphasise the positive
+r Keep the tone positive, avoid negativity ;; In general, you want to keep your tone positive and to avoid negativity. Even when writing to tell someone they've done something wrong, or to point out a problem, your tone should be firm but even-handed.
+r The goal is a solution, not to put someone down ;; Remember your purpose is to change behaviour or to find a solution, not to cause offence or put another person down.
+x You failed to send your expense claim form before the deadline, so you will not be compensated until the end of June. ;; As we did not receive your expense claim form before 30 April, we are afraid that we cannot compensate you until the end of June. ;; Your reader will feel much more comfortable dealing with the second, more positive approach, where the emphasis/blame has clearly been removed from the reader and directed towards the writer.
+x It is quite obvious that somebody in your department cannot read. This is the second time this month I've had to return the overtime records because the client job numbers were not filled in. Give the job to someone else this time, okay? Or, at least tell them the facts – no overtime records, no overtime pay. ;; I am returning your overtime records because the client job numbers were not filled in. This oversight has occurred twice in one month. Please let your staff know that unless we have complete records, we cannot issue overtime cheques. I would appreciate your help in clearing up this problem. ;; Emotional blame only creates long-term problems
+r In a bad mood? Write it, but don't send it ;; If you find yourself in a negative mood when you sit down to write, try to change your attitude. Or, write a negative email but don't send it. Making someone else feel bad may make you feel good, but think how it would feel to be on the receiving end of it. Short-term satisfaction is a poor exchange for creating long-term problems for yourself.
+%Keep your tone natural
+r Email is informal communication ;; With the exception of highly technical messages, emails are informal communications. Yet many writers feel that when they put their thoughts on paper, they must change their language into something more official sounding. However, it is more likely to ensure the reader's confusion.
+x Herewith are the files for the Technoview audit. Please make an estimate of your requirements for the length of time you will need these files. Note this time on the enclosed slip and return the slip to me at your earliest convenience. ;; Here are the files for the Technoview audit. Please let me know how long you will need them. Write your time estimate on the attached slip and return the slip to me. ;; The writer obviously believes that a more official tone is likely to ensure that the reader will comply. The writer only needs to say it plainly.
+r Say it out loud first; read it back when done ;; Over-official language prevents clear communication. Hear yourself telling the reader what you want him or her to know before you write it. Read your message aloud. Try and attain a clear, straightforward style that lets your true "voice" come through.
+
+@sec greet | How do I address the reader? | Greetings & salutations | The first line, when you can't decide between Dear and Hi | Dear Hi Mr Ms
+%Everyday
+- Hi [First Name], ;; Best for most professional emails ;; Neutral
+- Hello [First Name], ;; Slightly more formal than "Hi" ;; Neutral
+- Dear [Title + Last Name], ;; Best for formal first contact ;; Formal
+- Good morning [Title + Last Name], ;; Formal, time-specific ;; Formal
+- Hey [First Name], ;; Only for people you know well ;; Warm
+- Dear Jack, ;; When you know the person or if you are comfortable on a first-name basis ;; Warm
+%Groups & unknown names
+- Hi everyone, ;; For addressing a group ;; Neutral
+- Dear [Full Name], ;; Best when unsure of gender/title ;; Formal
+- Dear Ms. [Last Name], ;; If you do not know whether the person prefers Mrs. or Miss ;; Formal
+- Greetings, ;; Use when you don't know the recipient's name ;; Formal
+- Dear Hiring Manager, ;; When name is unknown, better than "To Whom It May Concern" ;; Formal
+- Dear Accounting Staff, ;; When you do not know the exact person to contact ;; Formal
+- Dear Client Services Representative, ;; Addressing a role ;; Formal
+%With titles
+- Dear Dr. [Last Name], ;; Doctors and PhDs ;; Formal
+- Dear Senator Collins, ;; Government officials; Governor also works ;; Formal
+- Dear Commissioner Samson, ;; Job titles; Chief / Colonel / Reverend also work ;; Formal
+%Most common mistake
+x Dear Mr. John, ;; Dear John, (informal) / Dear Mr. Smith, (formal) / Dear John Smith, (safe) ;; Wrong—"Mr." goes with the surname, not the first name. "Dear John Smith," is perfectly neutral and professional for first contact.
+!tip Do not abbreviate titles in the greeting. Spell all names and titles correctly. A colon or a comma can be used after the name, but a comma is softer and friendlier.
+
+@sec open | How do I write the first line? | Opening lines | Replying to an enquiry, reaching out, or picking up an earlier conversation | BLUF
+!formula State your purpose in the first sentence (BLUF: Bottom Line Up Front). Put the background in the second.
+!tip BLUF – Bottom Line Up Front.
+x Regarding the project we discussed last week during the meeting with the client, we have been analyzing the new data and we found some discrepancies which might affect the overall timeline significantly, so I am writing to ask you... ;; I'm writing to request a 3-day extension on the project deadline. For context, we found data discrepancies during our analysis yesterday. ;; Before: the recipient reads 30 words and still doesn't know what you want. After: the recipient knows the exact ask in the first 7 words.
+%Thanks for contacting us
+- Thank you for contacting us about ... ;;  ;; Neutral
+- We appreciate you reaching out to us regarding ... ;;  ;; Neutral
+- Thank you for your recent inquiry concerning ... ;;  ;; Formal
+%Thanks for your interest
+- Thank you for expressing an interest in ... ;;  ;; Neutral
+- Thank you for your keen interest in our ... ;;  ;; Neutral
+- We are grateful for your expressed interest in ... ;;  ;; Formal
+%We received your request
+- We have received your request for a demonstration of ... ;;  ;; Neutral
+- We acknowledge your request for a demonstration of ... ;;  ;; Formal
+- Your interest in a product demonstration has been duly noted. ;;  ;; Formal
+%Reaching out
+- I'm writing to you in connection with ... ;;  ;; Neutral
+- I am writing with reference to ... ;;  ;; Formal
+- This correspondence serves as a follow-up to ... ;;  ;; Formal
+%Replying to their email
+- Following your email enquiry, ... ;;  ;; Neutral
+- In response to your email inquiry, ... ;;  ;; Formal
+- Pursuant to your recent email, ... ;; Very formal, close to legal style ;; Formal
+%Moving things forward
+- I would just like to follow up on your interest in ... ;;  ;; Neutral
+- I am writing to further explore your interest in ... ;;  ;; Formal
+- To progress your initial interest, I would like to ... ;;  ;; Formal
+%After a phone call
+- Further to our telephone conversation yesterday, ... ;;  ;; Neutral
+- Building on our discussion yesterday, ... ;;  ;; Neutral
+- To formalize the points raised during our teleconference yesterday, ... ;; Puts what was said on the phone in writing ;; Formal
+%Referred by a colleague
+- My colleague has informed me you're interested in ... ;;  ;; Neutral
+- My colleague, [Name], has indicated your potential interest in ... ;;  ;; Formal
+- It has been brought to my attention by my colleague that you are exploring ... ;;  ;; Formal
+
+@sec intro-self | How do I introduce myself? | Introducing yourself | First contact with a stranger or new client, or introducing yourself to the company as a new hire | 
+!tip Try to follow the introduction with a "That is why..." or "Specifically..." statement. The intro gets attention; the pivot gets the reply.
++ The "Mutual Connection" Intro ;; Introduced by a mutual contact ;; Warm ;; I hope this email finds you well. [Mutual Contact Name] suggested I reach out to you, given your expertise in [Industry/Field]. I'm [Your Name], a [Your Job Title] at [Your Company], and I'd love to get 5 minutes on your calendar to share how we've helped similar teams. ;;  ;; Tone: Warm
++ The "Shared Experience" Intro ;; Met at a trade show or event ;; Warm ;; It was a pleasure connecting with you at the [Event Name] last week. I'm [Your Name] from [Your Company]—we briefly discussed [specific topic] near the keynote stage. I'm following up because I believe there is a strong synergy between your work in [Their Area] and what we are building. ;;  ;; Tone: Networking / Events
++ The "Value-First" Cold Intro ;; Cold outreach that leads with value ;; Neutral ;; My name is [Your Name] and I lead [Department] at [Your Company]. I've been following [Their Company]'s recent growth in [Specific Area], and I noticed you might be facing [Specific Pain Point]. We helped a similar client reduce that friction by [X%], so I wanted to introduce myself. ;;  ;; Tone: Outreach
++ The "Post-Purchase / Account" Intro ;; Introducing yourself as the account contact after signing ;; Warm ;; Congratulations again on signing up with us! I'm [Your Name], your dedicated [Account Manager/Implementation Specialist] here at [Your Company]. My primary role is to ensure you see a return on investment immediately, so I've attached a quick 15-minute onboarding checklist to get us started. ;;  ;; Tone: Client Onboarding
++ The "Job Application / Proposal" Intro ;; Job application or proposal ;; Formal ;; My name is [Your Name] and I am a [Your Job Title] with over [X years] of experience in [Industry]. I am writing to formally introduce myself and submit my application for the [Role Name] position, as my background in [Specific Skill] aligns perfectly with your team's current objectives. ;;  ;; Tone: Formal
++ The "Re-Engagement" Intro ;; Reconnecting with an old contact ;; Warm ;; It has been far too long! This is [Your Name] from [Your Company]. We collaborated back in [Year/Project Name], and I recently came across your impressive work on [Recent Project]. I wanted to reintroduce myself and see if you are open to exploring a new initiative we are rolling out. ;;  ;; Tone: Old Contact
++ The "Media / PR" Intro ;; Reaching out to journalists or media ;; Neutral ;; Hi [First Name], I'm [Your Name], the [Your Job Title] at [Your Company]. I've been reading your articles on [Topic] and truly admire your perspective. I'm reaching out to introduce myself because I have a data-driven story regarding [Pitch Topic] that I think would resonate deeply with your audience. ;;  ;; Tone: Pitching
++ The "Vendor / Partner" Intro ;; Looking for a partner ;; Neutral ;; Allow me to introduce myself: I'm [Your Name], leading Business Development for [Your Company]. We specialize in [Your Service], but more importantly, we specialize in making our partners look good. I'm reaching out to see if a strategic partnership between our firms could unlock new value for your current client base. ;;  ;; Tone: Collaborative
++ The "Executive Summary" Intro ;; Writing to executives, straight to the point ;; Direct ;; I'm [Your Name], representing [Your Company]'s executive team. I won't waste your time with fluff—I'm reaching out directly because our data indicates a [X%] efficiency gap in [Their Industry] that we have cracked the code on. I'd like to introduce our solution to your operations lead. ;;  ;; Tone: C-Suite level
++ The "Internal / New Hire" Intro ;; A new hire introducing themselves to everyone ;; Warm ;; Hello Team, I'm [Your Name] and I am thrilled to join [Company Name] as the new [Job Title]. I come to you with a background in [Previous Experience], but my primary goal here is to listen and learn from each of you. I look forward to supporting [Department] and driving our Q4 initiatives together. ;;  ;; Tone: Company wide
+
+@sec intro-other | How do I introduce two people? | Introducing someone else | Connecting colleagues, or recommending a candidate or consultant | networking
++ The "Busy Executive" Tone ;; The recipient is a very busy executive ;; Formal ;; I wanted to let you know that I passed your name on to [Colleague], a former colleague of mine who is researching [Topic]. I know your schedule is squeezed, so I don't make this request lightly—but I truly believe your years of experience would provide significant insight into the specific challenges they are facing. ;;  ;; Apologetic Tone · Best for: C-suite or overloaded contacts
++ The "Strong Endorsement" Tone ;; Strongly recommending a candidate or consultant ;; Direct ;; I'm introducing [Colleague], whose credentials are exceptionally strong—for seven years, they were [specific role]. I know your expertise will be incredibly valuable to their current initiatives, and I'm confident they would bring fresh value to your team as well. ;;  ;; Confident Tone · Best for: Recommending a candidate or consultant
++ The "Peer-to-Peer" Tone ;; Introducing two peers ;; Warm ;; I wanted to connect you with [Colleague], a former colleague of mine doing fascinating work in [Industry]. You both share a passion for [Common Interest], and I immediately thought of you. Perhaps you could explain to him how you approach [Specific Process]—I know he is keen to learn from your experience. ;;  ;; Collaborative Tone · Best for: Networking two equals
++ The "Low Pressure" Tone ;; Just a heads-up, no pressure ;; Warm ;; I just wanted to give you a quick heads-up that I passed your name on to [Colleague], who is networking in the [Industry] sector. They are tackling [Challenge], and I felt your strategic insight would be uniquely valuable. No pressure at all—just wanted to make the connection. ;;  ;; Soft Tone · Best for: FYI heads-ups with zero urgency
++ The "High-Stakes" Formal Tone ;; Senior advisors or strategic partnerships ;; Formal ;; I wanted to formally introduce you to [Colleague], a trusted former colleague and a recognized authority in [Field]. Your years of experience in [Recipient's Area] will provide significant insight into the project they are pioneering. I'm passing along a high-quality connection because I know you'll both find immense value. ;;  ;; Formal Tone · Best for: Senior advisors or strategic partnerships
++ The "Warm & Personal" Tone ;; With a personal touch ;; Warm ;; I'd love to connect you with [Colleague], a former colleague of mine who is doing some remarkable work on [Topic]. On a personal note, they are a gracious and personable individual—I genuinely think you will like them. I appreciate you even considering this. ;;  ;; Warm & Personal Tone · Best for: Softening a professional ask with personality
++ The "Specific Ask" Tone ;; You need them to act now ;; Direct ;; I'm reaching out to introduce [Colleague], who I believe would be a phenomenal fit for your needs regarding [Project]. They have incredibly strong credentials in this space, and I would appreciate it if you would take a few minutes to talk with them about your approach. ;;  ;; Direct Tone · Best for: When you need a clear, immediate action
++ The "Curiosity-Driven" Tone ;; Sparks interest without asking for a meeting ;; Neutral ;; I passed your name on to [Colleague], a former colleague of mine who is actively networking in [Industry]. They are particularly interested in how you've navigated [Specific Challenge], and I knew your reputation in that area would make you an excellent resource. Perhaps you could explain to them how you tackled it. ;;  ;; Curiosity-Driven Tone · Best for: Sparking interest without demanding a meeting
++ The "Grateful & Respectful" Tone ;; When you owe the recipient a favour ;; Formal ;; I'm introducing [Colleague], a former colleague whose work on [Topic] has been truly impressive. I know your schedule is squeezed, which is why I don't ask this lightly—but your guidance would mean a great deal to them. I deeply appreciate your help with this. ;;  ;; Grateful & Respectful Tone · Best for: When you owe the recipient a favor
++ The "Mutual Growth" Tone ;; Cross-industry, mutually beneficial ;; Neutral ;; I wanted to connect you with [Colleague], a former colleague of mine with seven years of experience in [Field]. I felt that your strategic insight on [Area] would be incredibly valuable to their current research, and conversely, their fresh perspective could offer new angles for your upcoming initiatives as well. ;;  ;; Mutual Growth Tone · Best for: Partnership or cross-industry collaboration
+
+@tab ask | Ask | | Asking for help, requesting quotes, scheduling, inviting, chasing.
+
+@sec request | How do I ask politely? | Polite requests | Asking for information, approval, an extension or a favour | kindly please
+!formula Request = one courtesy word + the specific action + a clear deadline
+x Please kindly send me the file ASAP. ;; Could you please send me the file by Friday? ;; "Please kindly" is overused and can sound dated; "ASAP" can sound demanding. English prefers a clear, polite request with a deadline.
+%10 power words
+- I am writing to seek your formal endorsement on the capital expenditure proposal. ;; Seek (the ultimate formal verb): It implies you are searching for their wisdom, rather than demanding an answer. It treats them as a knowledge authority. ;; Formal
+- I would be most grateful (and deeply obliged) if you could furnish the detailed breakdown by Wednesday. ;; Grateful / Obliged (personal indebtedness): It explicitly states that their action will put you in their debt, shifting the weight onto you rather than onto them. ;; Formal
+- Kindly share your preliminary observations before the executive review. ;; Kindly (the formal softener): It removes the sting of a direct imperative. Unlike "please," which can still sound like an order, "kindly" frames it as a courteous favor. ;; Formal
+- Would it be possible (or feasible) for you to extend the submission window by 48 hours? ;; Possible / Feasible (the escape hatch): It places the burden of feasibility on logistics or circumstances, not on the recipient's willingness. It gives them a respectful out. ;; Neutral
+- Please forward the signed MOU at your earliest convenience—only when your current priorities permit. ;; Convenience (ultimate time-respect): It explicitly signals that you value their existing schedule far more than your urgency. It removes all pressure. ;; Neutral
+- Please advise on whether you prefer Option A or B, as your direction is critical here. ;; Advise (deferential guidance): Instead of asking for "data" or "answers," you are asking for their professional counsel. It elevates their response to high-level consulting. ;; Neutral
+- Might I trouble you for a quick sanity-check on the attached pricing table? ;; Might / Could (modal hedging): Using the past-tense modals ("might" instead of "may," "could" instead of "can") creates psychological distance, making the request feel less immediate and pushy. ;; Formal
+- If your schedule permits, allow me to request a 10-minute briefing on the merger status. ;; Permit / Allow (permission-based deference): It frames your request as an intrusion that you need their permission to even ask. Extremely high-formality, ideal for C-suite. ;; Formal
+- I respectfully request your guidance (and operational assistance) in navigating the client's compliance audit. ;; Assistance / Guidance (action-oriented respect): It labels your request as needing help, not just menial action. This appeals to their expertise and ego in a respectful way. ;; Formal
+- Could you kindly spare a few moments to confirm the quarterly headcount? ;; Spare (extreme time-deference): This is a highly formal, old-school business term that acknowledges that taking time to read your email is a sacrifice on their part. ;; Formal
+!tip "At your earliest convenience" means "whenever suits you" and carries no urgency. When it really is urgent, give a specific time and say why (see "They haven't replied. How do I chase?").
+
+@sec pricing | How do I ask a supplier for a quote? | Requesting a quote | Getting a quote from a new supplier, asking for a volume discount, keeping your rate at renewal, comparing prices | quotation quote price RFQ
+!formula A good enquiry states: model/spec + quantity + destination/trade terms + lead time + payment terms + reply deadline
+!tip Each template below is rated on Formality, Politeness and Straightforwardness. Choose based on your relationship with the supplier.
+x We are interested in your product. Please send us your best price. ;; We are interested in Model X. Could you please quote your best FOB Shanghai price for 1,000 units, including lead time and payment terms? ;; Problem: No model, quantity, destination, terms, or deadline. The recipient cannot quote properly.
++ #1 Initial Inquiry ;; First contact with a new supplier ;; Formal ;; We are currently exploring potential partnerships for [product/service] and would respectfully request your most competitive formal quotation for [specifications], to be submitted by [deadline]. ;; We are currently exploring potential partnerships for industrial-grade packaging materials and would respectfully request your most competitive formal quotation for 500 units of custom boxes, to be submitted by May 10th. ;; Tone / Standards: Formality (High) | Politeness (High) | Straightforwardness (Medium) · Situation: First-time outreach to an unknown vendor
++ #2 Bulk / Volume Discount ;; Large order, asking for a volume discount ;; Neutral ;; Given our planned order volume of [quantity], we respectfully request a revised quotation reflecting your best tiered bulk-discount structure, effective from [threshold quantity]. ;; Given our planned order volume of 2,000 units, we respectfully request a revised quotation reflecting your best tiered bulk-discount structure, effective from 500 units. ;; Tone / Standards: Formality (Medium) | Politeness (High) | Straightforwardness (High) · Situation: Large order quantity requiring a discount
++ #3 Custom / Enterprise Solution ;; Custom package not on their website ;; Formal ;; Our specific operational needs require a tailored configuration including [features/modules]; therefore, we kindly request a custom enterprise pricing proposal that deviates from your standard public plans. ;; Our specific operational needs require a tailored configuration including unlimited API calls, white-label branding, and dedicated account management; therefore, we kindly request a custom enterprise pricing proposal that deviates from your standard public plans. ;; Tone / Standards: Formality (High) | Politeness (Medium) | Straightforwardness (High) · Situation: Requesting a tailored SaaS or service package not listed on the website
++ #4 Itemized Cost Breakdown ;; Itemised breakdown for internal approval ;; Formal ;; To facilitate our internal approval process, we kindly request a detailed, itemized breakdown of your quoted costs for [service/product], specifically delineating [components such as materials, labor, and overhead]. ;; To facilitate our internal approval process, we kindly request a detailed, itemized breakdown of your quoted costs for the website development project, specifically delineating design, front-end coding, back-end integration, and QA testing. ;; Tone / Standards: Formality (High) | Politeness (High) | Straightforwardness (High) · Situation: Need to see exactly what you are paying for to approve internally
++ #5 Renewal Pricing ;; Keeping the current rate at renewal (careful not to sound entitled) ;; Formal ;; As we approach our contract renewal on [date], we respectfully request your renewal proposal for the upcoming term, and we would greatly appreciate your consideration of maintaining our current favorable pricing, given our long-standing partnership. ;; As we approach our contract renewal on July 1st, we respectfully request your renewal proposal for the upcoming term, and we would greatly appreciate your consideration of maintaining our current favorable pricing, given our long-standing partnership of five years. ;; Tone / Standards: Formality (High) | Politeness (Very High) | Straightforwardness (Medium – careful not to sound entitled) · Situation: Loyal customer nearing contract expiry, asking to keep the old price
++ #6 Price Match / Competitor Comparison ;; Cheaper offer elsewhere, but you'd rather stay ;; Formal ;; While we have received a competitive offer from [competitor] at [price], we value our relationship with your firm and would like to ask whether you are able to match or improve upon this figure for [product], prior to our final decision. ;; While we have received a competitive offer from TechSolutions Inc. at $8,000/year, we value our relationship with your firm and would like to ask whether you are able to match or improve upon this figure for the enterprise CRM license, prior to our final decision. ;; Tone / Standards: Formality (High) | Politeness (Very High – diplomatic) | Straightforwardness (High) · Situation: You have a cheaper offer elsewhere but prefer the current vendor
++ #7 Post-Trial Purchase ;; Trial finished, ready to buy ;; Neutral ;; Having successfully completed our trial of [product], we are eager to move forward and kindly request your formal pricing proposal for [number of seats/units], including any applicable post-trial incentives you may offer. ;; Having successfully completed our trial of your project management software, we are eager to move forward and kindly request your formal pricing proposal for 25 user seats, including any applicable post-trial incentives you may offer. ;; Tone / Standards: Formality (Medium) | Politeness (High) | Straightforwardness (Medium) · Situation: You tested the product and now want to buy, asking for the next-step price
++ #8 One-Off / Project-Based Quote ;; One-off project with a clear scope ;; Neutral ;; We require a one-time execution of [project scope] within [timeframe] and would appreciate receiving your comprehensive lump-sum quotation, inclusive of all associated deliverables, by [date]. ;; We require a one-time execution of a 50-page corporate brochure with custom illustrations within three weeks and would appreciate receiving your comprehensive lump-sum quotation, inclusive of all associated deliverables, by Friday. ;; Tone / Standards: Formality (Medium) | Politeness (High) | Straightforwardness (Very High) · Situation: A single, non-recurring project with a clear scope
++ #9 Monthly Retainer ;; Ongoing monthly service ;; Neutral ;; We are seeking to engage your services on an ongoing monthly retainer basis for [service type], and we respectfully request your proposed monthly fee structure based on an estimated workload of [hours], along with any long-term commitment discounts. ;; We are seeking to engage your services on an ongoing monthly retainer basis for social media management and content creation, and we respectfully request your proposed monthly fee structure based on an estimated workload of 60 hours per month, along with any 6-month or 12-month commitment discounts. ;; Tone / Standards: Formality (Medium) | Politeness (High) | Straightforwardness (Medium) · Situation: Hiring an agency or freelancer for continuous monthly work
++ #10 Annual Budget Planning ;; Budgeting for the next fiscal year ;; Formal ;; As we finalize our corporate budget for the upcoming fiscal year commencing [date], we formally request your annual pricing proposal for [product/service], with specific attention to any early-payment or multi-year commitment advantages you may offer. ;; As we finalize our corporate budget for the upcoming fiscal year commencing October 1st, we formally request your annual pricing proposal for the full cybersecurity suite, with specific attention to any early-payment or multi-year commitment advantages you may offer. ;; Tone / Standards: Formality (Very High) | Politeness (High) | Straightforwardness (High) · Situation: Procurement team preparing budgets for the next financial year
+
+@sec meeting | How do I set up a meeting or demo? | Scheduling a meeting | When you want to demo a product, visit a client or book a meeting | demo presentation availability
+!tip Instead of "Let me know when you have a moment", offer two options: "Does Thursday 2 PM work, or is Friday morning easier for you?"
+%Purpose: a demonstration
+- I'd like to give you a personal demonstration of ... ;;  ;; Neutral
+- Could we arrange a demonstration of ...? ;;  ;; Neutral
+- I would welcome the opportunity to provide you with a personalized demonstration of ... ;;  ;; Formal
+- We would like to arrange a tailored presentation to showcase ... ;;  ;; Formal
+- We would like to coordinate a live demonstration of ... ;;  ;; Formal
+- Is it possible to schedule a demonstration session for ...? ;;  ;; Formal
+%Purpose: present or visit
+- I'd like to arrange a time to present ... ;;  ;; Neutral
+- I am writing to schedule a presentation regarding ... ;;  ;; Formal
+- We seek to arrange a meeting to present ... ;;  ;; Formal
+- Could we arrange a time for one of our representatives to ...? ;; Sending a representative ;; Neutral
+- Would you be amenable to a visit from one of our representatives to ...? ;;  ;; Formal
+- We would be delighted to dispatch a representative to ... ;;  ;; Formal
+%Purpose: explain the benefits
+- Could we meet you to explain the benefits of ...? ;;  ;; Neutral
+- It would probably be a good idea if we met you to explain ... ;;  ;; Neutral
+- We'd like to explain the many benefits of using ... ;;  ;; Neutral
+- We'd like an opportunity to show you how your company can benefit from ... ;;  ;; Neutral
+- We would value the chance to discuss the advantages of ... ;;  ;; Formal
+- We would like to walk you through the core advantages of integrating ... ;;  ;; Formal
+- We are eager to illustrate the potential ROI your company could realize through ... ;;  ;; Formal
+- We seek to demonstrate how [Product/Service] can enhance your operational efficiency. ;;  ;; Formal
+- We believe a meeting would be advantageous to articulate ... ;;  ;; Formal
+- To thoroughly outline the benefits, a formal meeting would be most effective. ;;  ;; Formal
+- Might we convene to elaborate on the value proposition of ...? ;; Very formal ;; Formal
+- We aim to elucidate the key benefits associated with ... ;; Very formal ;; Formal
+%Ask for a convenient time
+- When would be a convenient time for me to ...? ;;  ;; Neutral
+- When would be a good time for us to ...? ;;  ;; Neutral
+- Could you let me know when you would like us to ...? ;;  ;; Neutral
+- When would be a suitable time for us to meet you? ;;  ;; Neutral
+- May I inquire about your availability for a brief discussion? ;;  ;; Formal
+- At your earliest convenience, could you advise on a suitable time for me to ...? ;;  ;; Formal
+- Could you please indicate a mutually agreeable time for us to ...? ;;  ;; Formal
+- We would appreciate it if you could suggest an opportune moment for us to ... ;;  ;; Formal
+- Please let us know your preferred timing for our ... ;;  ;; Formal
+- We await your guidance on a suitable date for ... ;;  ;; Formal
+- We would be grateful to know when you might be available to meet. ;;  ;; Formal
+- Could you provide some dates/times that align with your schedule? ;;  ;; Formal
+%Suggest a time
+- One of our representatives could come to your office anytime next week. ;;  ;; Neutral
+- I could demonstrate our product sometime next week. ;;  ;; Neutral
+- I would be happy to present our services to you at a time convenient for you. ;;  ;; Neutral
+- I'd be happy to explain the benefits of using our company's service anytime you are available. ;;  ;; Neutral
+- Please let me know when you are available to meet. ;;  ;; Neutral
+- I would be grateful if you could let me have your availability over the coming weeks. ;;  ;; Neutral
+- We have availability next week for an on-site visit at your convenience. ;;  ;; Formal
+- Our team is flexible to attend your offices throughout the forthcoming week. ;;  ;; Formal
+- I would be available to conduct a demonstration at any point next week. ;;  ;; Formal
+- Please note my calendar is open next week for this presentation. ;;  ;; Formal
+- I am entirely flexible and happy to align the presentation with your schedule. ;;  ;; Formal
+- We are prepared to tailor our availability to suit your timetable. ;;  ;; Formal
+- I am at your disposal to discuss the service benefits whenever you find suitable. ;;  ;; Formal
+- We are ready to proceed at a time that best accommodates your busy schedule. ;;  ;; Formal
+- Kindly inform me of your availability for a potential meeting. ;;  ;; Formal
+- We look forward to receiving your proposed times for a meeting. ;;  ;; Formal
+- I would appreciate it if you could share your availability for the coming weeks. ;;  ;; Formal
+- To facilitate scheduling, could you please outline your availability in the near future? ;;  ;; Formal
+
+@sec invite | How do I send an invitation? | Inviting people | Inviting people to a webinar, demo, dinner, annual event or training | webinar RSVP
+%Invitation templates
++ #1 Webinar / Live Online Event ;; Live online event or webinar ;; Neutral ;; Join us for a [duration]-minute live webinar on [topic], where we'll show you exactly how to [key takeaway] – and you can register here: [link]. ;; Join us for a 45-minute live webinar on "Cutting Logistics Costs in 2026", where we'll show you exactly how to save up to 15% on freight – and you can register here: bit.ly/webinar-reg. ;; Tone: Educational & Value-Driven
++ #2 Product Demo ;; One-to-one product demo ;; Direct ;; I'd like to personally walk you through [product/feature] in a [duration]-minute demo – pick a time that suits you here: [calendar link]. ;; I'd like to personally walk you through our new AI dashboard in a 20-minute demo – pick a time that suits you here: calendly.com/demo-slot. ;; Tone: Direct & Action-Oriented
++ #3 In-Person Networking / Conference ;; In-person summit or networking event ;; Warm ;; We'd love to host you at our upcoming [event name] on [date] in [city] – an intimate gathering of [industry/role] leaders – and we've reserved a spot just for you: [RSVP link]. ;; We'd love to host you at our upcoming "FinTech Forward Summit" on May 12th in Singapore – an intimate gathering of chief financial officers – and we've reserved a spot just for you: event.xyz/rsvp. ;; Tone: Exclusive & Warm
++ #4 VIP Customer Appreciation ;; VIP customer appreciation dinner ;; Formal ;; As one of our most valued [customer segment], you are cordially invited to our [event type] – a private evening of [perks/activities] – kindly confirm your attendance by [deadline]: [link]. ;; As one of our most valued enterprise partners, you are cordially invited to our annual gala dinner – a private evening of fine dining and networking with industry pioneers – kindly confirm your attendance by April 10th: gala.rsvp.io. ;; Tone: Appreciative & Flattering
++ #5 Quarterly Business Review ;; Quarterly business review or strategy meeting ;; Neutral ;; To align on our goals for the coming [timeframe], I'd like to invite you to a [duration]-minute strategic review call on [date] – please confirm your availability here: [scheduling link]. ;; To align on our goals for the coming quarter, I'd like to invite you to a 30-minute strategic review call on Tuesday, June 3rd – please confirm your availability here: calendly.com/qbr-meeting. ;; Tone: Professional & Collaborative
++ #6 Beta / Early Access ;; Beta or early access ;; Warm ;; Before we open to the public, we're inviting a select few – including you – to try [product] for free, starting [date]. Simply reply 'YES' to this email to secure your early access. ;; Before we open to the public, we're inviting a select few – including you – to try our new task-automation tool for free, starting March 1st. Simply reply 'YES' to this email to secure your early access. ;; Tone: Curious & Exclusive
++ #7 Workshop / Training ;; Workshop or training ;; Neutral ;; If you're looking to upskill in [skill area], join our hands-on workshop on [date] – space is limited to [number] participants, so register now: [link]. ;; If you're looking to upskill in prompt engineering for sales teams, join our hands-on workshop on July 20th – space is limited to 25 participants, so register now: workshop.learn.io. ;; Tone: Encouraging & Skill-Focused
++ #8 Partnership Discovery Call ;; Partnership discovery call ;; Neutral ;; I see real synergy between [your company] and [their company] – let's explore this over a [duration]-minute call. Are you free on [date]? Let me know, and I'll send a calendar invite. ;; I see real synergy between our cloud infrastructure and your data-analytics platform – let's explore this over a 25-minute call. Are you free on Thursday afternoon? Let me know, and I'll send a calendar invite. ;; Tone: Open & Strategic
++ #9 Customer Advisory Board ;; Invitation to a customer advisory board ;; Formal ;; We value your insight deeply – which is why we're inviting you to join our [name] Advisory Board, where you'll shape our product roadmap. The first session is on [date] – confirm your seat here: [link]. ;; We value your insight deeply – which is why we're inviting you to join our "Voice of the Customer" Advisory Board, where you'll shape our product roadmap. The first session is on October 5th – confirm your seat here: advisory.xyz/join. ;; Tone: Respectful & Influential
++ #10 Company Anniversary ;; Company anniversary ;; Warm ;; We're turning [number]! Join us for a [event type] on [date] to celebrate this milestone with [activities]. No presentations, no sales – just good company. RSVP here: [link]. ;; We're turning 10! Join us for a rooftop happy hour on September 15th to celebrate this milestone with live music and giveaways. No presentations, no sales – just good company. RSVP here: party.xyz/rsvp. ;; Tone: Celebratory & Casual
+%Line by line, original → elevated
+u Please join us. ;; We would be honored by your presence at [Event Name]. ;; Opening Invitation ;; Tone: Warm & Inclusive
+u This is your invitation to ;; This serves as your formal invitation to [Key Activity, e.g., our annual leadership summit]. ;; Stating the Purpose ;; Tone: Direct & Personalized
+u We invite you to ;; We cordially invite you to [Event Action, e.g., join us for an evening of networking]. ;; Primary Ask ;; Tone: Gracious & Professional
+u You are invited to ;; You are hereby invited to attend [Event Full Name]—an exclusive gathering for [Target Audience]. ;; Announcement Header ;; Tone: Formal & Ceremonial
+u We will host a reception for ;; We will be hosting a private reception in honor of [Honoree/Group]. ;; Event Description ;; Tone: Host-Centric & Generous
+u We want to celebrate Judy's 20th anniversary at the company. ;; We are delighted to commemorate [Name]'s [Number]-year legacy with [Company Name]—a milestone worth celebrating together. ;; Milestone Acknowledgement ;; Tone: Personal & Heartfelt
+u The occasion is ;; This event marks [Specific Occasion, e.g., the launch of our new initiative]. ;; Defining the Event ;; Tone: Factual & Clear
+u This is a fundraiser to benefit ;; This is a benefit gala in support of [Beneficiary/Charity Name] and its mission to [Mission Statement]. ;; Mission / Cause ;; Tone: Purpose-Driven & Altruistic
+u This will mark the 25th year that ;; This gathering marks the [Number]th consecutive year that [Organization] has [Tradition/Achievement]. ;; Historical Significance ;; Tone: Reflective & Proud
+u The event is being held on (give date, time, place) ;; The event will take place on [Date] at [Time] in [Venue Name, Address]. ;; Core Details ;; Tone: Informational / Logistics
+u Dress is business casual ;; Attire for the occasion is business casual—we encourage [specifics, e.g., blazers, no ties required]. ;; Attire Guidelines ;; Tone: Instructive / Clarifying
+u Dress is semiformal ;; Please join us in semiformal attire—think cocktail dresses and dark suits for an elegant evening. ;; Attire Guidelines ;; Tone: Gracious / Elevated
+u Dress is formal ;; Formal black-tie attire is requested to complement the prestige of this occasion. ;; Attire Guidelines ;; Tone: High-End / Traditional
+u A reception will be at 6 p.m., followed by dinner ;; The evening will commence with a networking reception at [Start Time], followed by a seated dinner at [Dinner Time]. ;; Agenda Flow ;; Tone: Structured / Clear Agenda
+u Following dinner, our guest speaker will be ;; After dinner, we are privileged to feature [Speaker Name], who will address [Topic]. ;; Keynote / Highlight ;; Tone: Anticipatory / Inspiring
+u We hope you can attend/participate ;; We sincerely hope you will be able to join us and contribute to [Activity/Discussion]. ;; Soft Call to Action ;; Tone: Hopeful / Engaging
+u If you cannot attend, please contact us by ;; Should your schedule not permit attendance, kindly notify us by [RSVP Deadline] at [Contact Info]. ;; Regrets / RSVP Deadline ;; Tone: Courteous / Practical
+u Please return the enclosed card. ;; Kindly complete and return the enclosed response card by [Deadline]—or RSVP online at [Link]. ;; RSVP Mechanism ;; Tone: Formal / Traditional
+u To help the restaurant staff prepare, we need to know how many in your party will attend. ;; For catering and seating purposes, please confirm the total number of guests in your party when you RSVP. ;; Headcount / Logistics ;; Tone: Considerate / Practical
+u Please bring ;; Please be sure to bring [Item, e.g., your printed ticket / business card for networking] upon arrival. ;; Required Items ;; Tone: Instructional / Reminder
+u Please arrive by ;; To ensure a seamless check-in, please plan to arrive no later than [Arrival Time]. ;; Timing Reminder ;; Tone: Prompt / Considerate
+u Refreshments will be served ;; Light refreshments and beverages will be available throughout the [Session/Reception]. ;; Amenities ;; Tone: Welcoming / Comforting
+u The cost of tickets is ;; Ticket pricing is set at [$Amount] per attendee, with [Discount/Group Rate] options available. ;; Pricing ;; Tone: Transparent / Direct
+u Donations will be accepted at the door. ;; For those wishing to contribute, donations will be gratefully accepted at the registration desk—cash, card, and online options available. ;; Giving Mechanism ;; Tone: Clear / Actionable
+u To get to this location, follow Route ;; Driving directions: take [Route/Highway] to Exit [Number]. Valet parking will be available at the venue. ;; Travel / Logistics ;; Tone: Directional / Helpful
+u If you have questions, call Pam Jones at ;; For any immediate inquiries, please reach out to [Contact Person] directly at [Phone/Email]. ;; Point of Contact ;; Tone: Supportive / Accessible
+u We appreciate your support. ;; Your continued support and partnership are deeply valued—we look forward to celebrating with you. ;; Acknowledgement ;; Tone: Grateful / Closing
+
+@sec follow | They haven't replied. How do I chase? | Following up & chasing | When someone is slow to reply, a task is stalled, or a deadline is close | follow up chase reminder revert circling back
+!formula Assume good intent + make replying easy + give a specific date and the reason
+x Why no reply? Waiting for your reply. ;; I wanted to follow up on my email below. Could you please let me know if you need any further information? I would appreciate a reply by [date]. ;; Problem: Sounds accusatory. English follow-ups usually assume goodwill and make it easy to reply.
+x Please revert at the earliest. ;; Could you reply by end of day? That lets our developers deploy before the weekend maintenance window. ;; "Revert" means "go back to a previous state". Explain the why behind the timing.
+%Ready to use
+- I wanted to follow up on my email below. ;; First follow-up ;; Neutral
+- Could you please let me know if you need any further information? ;; Makes it easier to reply ;; Neutral
+- I would appreciate a reply by [date]. ;; Gives a specific date ;; Neutral
+- I would just like to follow up on your interest in ... ;; Following up on a client's interest ;; Neutral
+- Since we last spoke, [new update]. ;; Following up with something new ;; Neutral
+%Avoid these
+? Per my last email... ;; "You ignored this; I'm annoyed I have to repeat myself." ;; Don't write this; instead, forward the original with a polite summary.
+? Just circling back to my previous email... ;; "I'm exhausted from waiting for your acknowledgment." ;; Forward the original thread with a fresh subject line and add one brand-new sentence of updated context.
+? Just circling back... ;; "I'm tired of waiting for you." ;; 
+? We're just following up on our previous conversation... ;; "You ghosted me, and I'm stalking your inbox with nothing fresh." ;; Deliver new value they lack: "Since we last spoke, we shipped a feature that directly kills your core bottleneck.". Say: “Since we last spoke, we shipped a feature that directly removes your core bottleneck.”
+? I wanted to touch base... ;; "I have nothing new to say, but I'm pinging you to fill my quota." ;; Lead with a specific trigger they recently performed. Say: “Since you downloaded our [Specific Asset] last week, here's how we've updated it...”
+? Let me know when you have a moment... ;; "I'm too timid to propose a time, so I'll leave this open-ended forever." ;; Offer a binary choice. Say: “Does Thursday 2 PM work, or is Friday morning easier for you?”
+? Please revert at the earliest. ;; "Drop your entire priority list and obey my personal clock." ;; Explain the why behind the timing. Say: “Replying by EOD lets our devs deploy before the weekend maintenance window.”
+
+@tab reply | Reply | | After their email arrives: confirm, agree, decline, or own a mistake.
+
+@sec reply-structure | How do I structure a reply to a request? | How to structure a reply | When a client or colleague has asked for something and you need to reply formally | reply structure
+%Getting the tone right
+r Reply quickly and build goodwill ;; Replies to email of request are a means of creating goodwill with clients as well as your colleagues. Such email should be responded to as quickly as possible.
+r Use a personal tone: plenty of I, we, you ;; It is also important that the replies are written in the correct tone. The personal approach, with plenty of references to I, we, you, me, etc., is ideal for this kind of e-mail. Your reply should be polite and positive, and should give the impression that it is a pleasure for you to be able to respond to the reader and to carry out the request made.
+r List every request first ;; Before you write a reply to a request, read through the text received and take note of all the requests (requests for information and requests for action) made by the client. If you have complied with the request already, tell the client so. If you have not been able to comply, tell the client what he or she can do. Be helpful.
+!formula Paragraph 1: acknowledge and summarise what they asked for → Paragraph 2: agree (with details) or decline (with the reason and what they can do instead) → each further paragraph answers one request. Usually 3–4 paragraphs.
+%Paragraph 1: acknowledge the request
+!tip All replies to requests start with a paragraph acknowledging the request. Your acknowledgement should mention the date of the request, and should summarise what information has been asked for or what action has been requested.
+- Thank you for your email of [date] regarding [subject]. ;;  ;; Neutral
+- I have received your email of [date] requesting information about ... ;;  ;; Neutral
+- I refer to your email of [date] enquiring about ... ;;  ;; Formal
+- Further to your email of [date] asking for information on [topic], I would like to inform you that ... ;;  ;; Formal
+- I refer to our telephone conversation of last Monday concerning ... ;; Responding to a request made by phone ;; Formal
+%Paragraph 2: details of your response
+!tip The second paragraph gives details of whether you can grant their request for information or action. If the request has been granted, the customer will need to know the full details of how the request has been carried out. If the request is denied, you need to tell the reader why it has been turned down and what the reader can do.
+%Further paragraphs
+!tip Remember that you should place only one point in each paragraph.
+- We would also like to inform you that ... ;;  ;; Neutral
+- Regarding your other request for ... ;;  ;; Neutral
+- In answer to your question about ... ;; You can also say: In answer to your enquiry about ... ;; Neutral
+- Concerning your other request for ... ;;  ;; Formal
+
+@sec confirm | How do I confirm, or say I've received it? | Confirming & acknowledging | Confirming details, acknowledging a document or complaint, confirming attendance | confirm acknowledge receipt noted clarify
+!tip In business, it is very important to clarify anything which you are not certain about. This helps you avoid making mistakes. Once you are sure you understand clearly, it's good business practice to confirm this, especially if you have asked for any clarification. In cases where clarification is not necessary, it is still good practice to confirm. This assures your reader everything is in hand. An email whose main purpose is to clarify or confirm information will generally be quite simple in structure.
+%10 confirmation words
+- I appreciate your swift confirmation on this matter. ;; Appreciate (softens the transaction): It frames the confirmation as a favor you're grateful for, not an obligation. ;; Neutral
+- Your feedback has been duly noted and confirmed in the final draft. ;; Duly (formal & deferential): It implies you are treating their input with the serious, official weight it deserves. ;; Formal
+- Please rest assured that I have confirmed all figures with the finance team. ;; Assure (builds trust): It shifts the focus from "I received this" to "I am giving you my personal guarantee." ;; Neutral
+- I am deeply grateful for your written confirmation of the partnership terms. ;; Grateful (demonstrates indebtedness): It acknowledges that their confirmation cost them effort, which you value. ;; Formal
+- I am pleased to confirm our acceptance of your revised proposal. ;; Pleased (expresses genuine satisfaction): It conveys that confirming this news brings you positive emotions, which humanizes the email. ;; Neutral
+- I respectfully confirm the schedule changes you recommended. ;; Respectfully (establishes hierarchy & decorum): Ideal for senior stakeholders; it places their authority above your own during the confirmation. ;; Formal
+- Your timely confirmation is highly valued by our entire implementation team. ;; Valued (validates the sender): It reassures the other party that their specific confirmation is not generic—it matters. ;; Neutral
+- I am honored to confirm my participation in the board review. ;; Honor (elevates the confirmation): Best for confirming attendance or acceptances; it implies their invitation is prestigious. ;; Formal
+- I can certainly confirm that the deliverables will arrive by Friday. ;; Certainly (shows enthusiastic willingness): It removes any hesitation or passive-aggression, replacing it with clear, warm agreement. ;; Neutral
+- I acknowledge receipt of your confirmation and will proceed immediately. ;; Acknowledge (shows active listening): It proves you didn't just skim the email—you actively received and registered their message. ;; Formal
+%Formally acknowledging receipt
+!tip Use this to confirm you have received and understood a complaint, a document, or new instructions without promising immediate action.
+!formula Say what you received + what happens next (or that it's on hold)
+- This is to acknowledge receipt of [document/complaint]. ;;  ;; Formal
+- We have reviewed and noted [the concerns raised in your correspondence dated July 28th]. ;;  ;; Formal
+- These points have been documented for further internal evaluation. ;; Follows the sentence above with the next step ;; Formal
+- Confirmation has been received regarding ... ;;  ;; Formal
+
+@sec agree | How do I say yes, or send what they asked for? | Agreeing & sending documents | Agreeing to a request, or sending the attachment they asked for | attach attached agree accept
+%Agreeing to a request
+- We would be pleased to carry out your instructions to ... ;;  ;; Neutral
+- As requested, we have carried out your instructions to ... ;; Already done ;; Neutral
+- We are pleased to inform you that ... ;;  ;; Neutral
+- We are pleased to let you know that ... ;;  ;; Neutral
+- We would like to inform you that ... ;;  ;; Neutral
+- I am glad to tell you that ... ;; You can also say: I am happy to tell you that ... ;; Warm
+- We are able to ... ;;  ;; Neutral
+%Sending attachments
+- I have attached ... ;;  ;; Neutral
+- As you requested, you will find attached ... ;;  ;; Neutral
+- Attached you will find ... ;;  ;; Neutral
+- I am pleased to attach ... ;;  ;; Neutral
+- Please find attached [the document]. ;;  ;; Neutral
+x In accordance with your request, I have attached the signed contract. ;; As you requested, I've attached the signed contract. / Per your request, I've attached the signed contract. ;; "In accordance with" is reserved for legal documents and official regulations. For everyday colleague/client emails, "as you requested" or "per your request" is crisp, modern, and clear.
+x Attached herewith please find the user guide for the training portal. ;; Please find attached the user guide for the training portal. ;; "Herewith" is outdated
+
+@sec decline | How do I say no without hurting the relationship? | Saying no politely | Declining a request, a meeting or demo, or an invitation | decline refuse say no regret
+!formula Thank them → say no clearly and give the reason → offer an alternative → leave the door open
+x Sorry, we cannot do this. ;; Unfortunately, we are unable to accept this request because of [reason]. However, we can offer [alternative]. ;; Problem: Too abrupt. Or sometimes the opposite: so indirect that the other side does not realise it is a "no."
+%Refusing a request
+!tip This has to be done tactfully and requires an explanation if you don't want to appear unhelpful or rude.
+- We regret that we are unable to ... ;;  ;; Formal
+- We regret to inform you that we cannot ... ;;  ;; Formal
+- Regrettably, we are unable to ... ;;  ;; Formal
+- I'm afraid we are unable to ... ;;  ;; Neutral
+- I'm sorry to let you know that ... ;;  ;; Neutral
+- I'm sorry, but we are unable to ... ;;  ;; Neutral
+- In the best interests of our customers, we do not normally ... ;; Uses company policy as the reason ;; Formal
+- Unfortunately, data is required to ... ;; Explains that you need information from them first ;; Neutral
+%Declining a meeting: thank first
+- Thank you for your offer to meet us, but ... ;;  ;; Neutral
+- Thank you for offering to demonstrate ..., but ... ;;  ;; Neutral
+- We appreciate the invitation to meet; however, ... ;;  ;; Formal
+- Thank you for proposing a meeting; regrettably, ... ;;  ;; Formal
+- We acknowledge your kind offer of a demonstration, but ... ;;  ;; Formal
+- We are grateful for the opportunity to view the demonstration; however, ... ;;  ;; Formal
+%Not right now
+- I'm afraid we're not able to meet you at the moment. ;;  ;; Neutral
+- We're not currently in a position to ... ;;  ;; Neutral
+- Unfortunately, our current schedule does not permit a meeting at this juncture. ;;  ;; Formal
+- Regrettably, we are unable to commit to a meeting at this time. ;;  ;; Formal
+- At present, we are unable to ... ;;  ;; Formal
+%Not ready to decide
+- We're not ready to make any decisions at the moment. ;;  ;; Neutral
+- We are not yet at a stage to make a decision regarding ... ;;  ;; Formal
+- Our decision-making process regarding this is currently in its preliminary phases. ;;  ;; Formal
+%No need at the moment
+- I'm sorry, but we're not interested at the moment. ;;  ;; Neutral
+- I don't think we require a meeting at this stage. ;;  ;; Neutral
+- We don't require a meeting at present. ;;  ;; Neutral
+- While we appreciate the offer, we do not have a current requirement for ... ;;  ;; Formal
+- We must respectfully decline at this time, though we appreciate your outreach. ;;  ;; Formal
+- We do not foresee the necessity of a meeting at this stage. ;;  ;; Formal
+- We believe a meeting is premature given our current workflow. ;;  ;; Formal
+- There is no immediate requirement for a meeting. ;;  ;; Formal
+- We see no need for a meeting in the immediate term. ;;  ;; Formal
+%Declining an invitation
+!formula Thanks (#1, #2) → regret + reason (#6 + #7/#8/#9) → softener and good wishes (#11, #12) → future opportunity (#14/#15/#18) → polite sign-off
+!tip For a complete decline email, combine: Opening (#1 or #2) · Regret + Reason (#6 + #7/#8/#9) · Softener + Good Wishes (#11 or #12) · Future Alternative (#14, #15 or #18) · Close with a polite signature.
+u Thank you for the invitation. ;; Thank you sincerely for the kind invitation to [Event Name]. ;; Opening Acknowledgment ;; Tone: Gracious & Warm
+u I appreciate your thinking of me. ;; I truly appreciate being included in your consideration for [Event/Occasion]. ;; Opening / Relationship Nod ;; Tone: Personal & Appreciative
+u Because several of your people are former colleagues of mine, I am particularly disappointed not to be able to ;; Given that several members of your team are former colleagues I hold in high regard, I am especially disappointed that I will be unable to [Join/Attend] on this occasion. ;; Personal Context + Regret ;; Tone: Regretful & Relationship-Focused
+u Your invitation is one I would like to accept, but ;; This is an invitation I would very much like to accept; however, [Constraint/Reason] prevents me from doing so. ;; Softening the Decline ;; Tone: Honest & Hesitant
+u Although I would like to ;; Although I would be delighted to [Participate/Attend], circumstances require me to [Alternative Action] instead. ;; Expressing Willingness ;; Tone: Diplomatic & Aspirational
+u I am sorry that I cannot attend. ;; I regret to inform you that I will not be able to attend [Event Name]. ;; Clear Regret Statement ;; Tone: Direct & Apologetic
+u Because of a conflict in my schedule ;; Due to a prior scheduling conflict that I am unable to reschedule, I must respectfully decline. ;; Stating the Reason ;; Tone: Factual / Neutral
+u I have another commitment. ;; I have a pre-existing professional obligation that coincides with [Event Date/Time]. ;; Reason (Brief) ;; Tone: Direct / Concise
+u Because I will be out of state ;; I will be traveling out of [State/Country] during that period and will not be available in person. ;; Location-Based Reason ;; Tone: Explanatory / Practical
+u I regret that I cannot ;; It is with genuine regret that I am unable to [Action, e.g., join you on that date]. ;; Core Decline Statement ;; Tone: Formal & Regretful
+u I am sure it will be a wonderful evening. ;; I have no doubt that [Event Name] will be a memorable and successful occasion. ;; Softener / Good Wishes ;; Tone: Warm / Complimentary
+u I will be disappointed to miss it. ;; I am genuinely disappointed to miss what promises to be an exceptional gathering. ;; Expressing FOMO (Fear Of Missing Out) ;; Tone: Sincere & Personal
+u It is unlikely that I will be available. ;; At this stage, it appears unlikely that my schedule will permit participation, though I will notify you immediately should that change. ;; Soft Decline (Pre-emptive) ;; Tone: Cautious / Tentative
+u Let us try again next time. ;; I sincerely hope we can reconnect at a future opportunity—please do keep me in mind for your next [Event/Initiative]. ;; Future Reconnection ;; Tone: Forward-Looking / Optimistic
+u Please let me know if I can help in the future. ;; Should there be any way I can support your efforts in the future—whether remotely or in advance—please do not hesitate to reach out. ;; Offering Assistance ;; Tone: Accommodating / Supportive
+u This is a difficult time. ;; Regrettably, this falls during a period of [High-Priority Project/Peak Season], which demands my full attention. ;; Soft Justification ;; Tone: Empathetic / Vague (use sparingly)
+u Ms. Jones receives hundreds of requests to speak. ;; With the high volume of speaking requests [Name] receives, we are unable to accept every engagement—however, we truly appreciate this opportunity. ;; Clarifying Volume / Constraints (useful for assistants) ;; Tone: Objective / Capacity-Centric
+u If you would like one of my colleagues to fill in ;; If it would be helpful, I would be happy to recommend a qualified colleague from my team—[Colleague Name]—who could [Speak/Represent] in my place. ;; Offering a Substitute/Alternative ;; Tone: Proactive / Solution-Oriented
+
+@sec admit | We made a mistake. How do I admit it and apologise? | Admitting mistakes & apologising | When the error is on your side (a delay, wrong data), or you need to concede in a negotiation | sorry apologise apologize mistake
+!formula State the facts objectively + take responsibility + explain the fix, then say how you'll prevent it
+x Sorry sorry, it's our fault, but your order was also unclear. ;; We apologise for the delay. It was caused by [reason]. We have taken [action] and will ship by [date]. ;; Too much apology plus blame-shifting weakens credibility. A good apology acknowledges, explains, and commits to action.
+%Admitting a mistake or oversight
+!tip Use this when an error occurred on your side, such as a missed deadline, incorrect data, or a shipping delay. Formula: 1. State the fact objectively + 2. Take ownership + 3. State the corrective action. Do not use "I" or "you" unless absolutely necessary. Focus on the error and the fix.
+- We acknowledge that ... ;;  ;; Formal
+- It has come to our attention that ... ;;  ;; Formal
+- Upon review, we have identified that ... ;;  ;; Formal
+- We accept full responsibility for ... ;;  ;; Formal
+- We regret to inform you that ... ;;  ;; Formal
++ Example: wrong invoice ;; Example: a wrong invoice ;; Formal ;; We acknowledge that [the error]. We accept full responsibility for this [oversight]. [Corrective action taken]. ;; We acknowledge that the invoice was processed with an incorrect billing code. We accept full responsibility for this administrative oversight. A corrected invoice has been issued and forwarded to your accounts department. ;; Phrases used: "We acknowledge that..." + "We accept full responsibility..."
+%Conceding a point in a negotiation or dispute
+!tip Use this when the other party makes a valid argument, and you formally agree to their terms or viewpoint without sounding weak. Formula: 1. Concede the point clearly + 2. Pivot to the next logical action. Use formal connectors like "however," "nevertheless," or "accordingly" to move the conversation forward.
+- We concede that ... ;;  ;; Formal
+- We do not dispute that ... ;;  ;; Formal
+- We are in agreement with your assessment regarding ... ;;  ;; Formal
+- We acknowledge the validity of ... ;;  ;; Formal
++ Example: accepting their timeline ;; Example: accepting their timeline ;; Formal ;; We concede that [their point]. Accordingly, [next action]. ;; We concede that your proposed delivery timeline is more efficient than our original estimate. Accordingly, we have updated our internal schedule to align with your requested date. ;; Phrases used: "We concede that..." + "Accordingly..."
+%Critical rules for formal admission
+x I am so sorry I messed this up! ;; An error was identified in the report. ;; Do: use passive voice to depersonalize the blame. Avoid: using emotional apologies.
+x Things got crazy busy and I forgot. ;; The discrepancy resulted from a data-entry error. ;; Do: use precise, factual language. Avoid: using vague or casual excuses.
+x Yes, we made a mistake. Hope that's okay. ;; ...however, preventative measures have been activated. ;; Do: pair the admission with a concrete solution. Avoid: admitting faults without a solution.
+x I admit I failed... ;; We regret... ;; Do: use "We" or "The company" instead of "I" to sound institutional. Avoid: overusing "I" (unless you are a sole proprietor).
+!tip Formal admission is a trust-building tool. When you objectively own an error in writing using these phrases, you actually increase the reader's confidence in your professionalism, rather than damaging it. Always end an admission email with a forward-looking statement to shift focus from the past mistake to the future fix.
+
+@tab announce | Announce | | Telling people first: good news, bad news, delays, price increases, policy changes, a move.
+
+@sec good | How do I share good news? | Sharing good news | Telling someone good news, or that you can meet their request | good news inform pleased
+- I am glad to let you know that ... ;;  ;; Warm
+- You'll be glad to hear that ... ;; You can also say: happy to know / learn ;; Warm
+- We are pleased to inform you that ... ;; "Happy" or "glad" also work ;; Neutral
+- We are able to ... ;;  ;; Neutral
+
+@sec bad | How do I break bad news or a delay? | Bad news & delays | Late delivery, a request you can't meet, or a change of plan | delay late bad news
+!formula Open with the current status → the reason → the new timing → an apology → a promise to keep them updated
+x Maybe the delivery will be late. We will try our best. ;; I'm writing to update you on order #123. Due to [reason], the delivery date will be adjusted to [new date]. We apologise for the inconvenience and will keep you updated. ;; Problem: The reader cannot tell what is actually happening or what the new timeline is. English business email usually gives the status early and clearly.
+- I'm sorry to let you know that ... ;;  ;; Neutral
+- Unfortunately, we are unable to ... ;;  ;; Neutral
+- Regrettably, ... ;; "Unfortunately, ..." also works ;; Formal
+- We regret to inform you that ... ;;  ;; Formal
+!tip For bad news to all staff (a delayed salary payment, for example), see the full before-and-after example under Industry → HR.
+
+@sec more | How do I add more points and link them? | Adding information & transitions | When one email covers several things, or you need to connect ideas | transition furthermore in addition
+%Adding information
+- I would also like to inform you that ... ;;  ;; Neutral
+- In addition, please note that ... ;;  ;; Neutral
+- Furthermore, I would just like to let you know that ... ;;  ;; Neutral
+- Moreover, we are able to ... ;;  ;; Formal
+%Transitions
+- However, / Consequently, / Nevertheless, / Conversely, / On the other hand, ;; Contrast ;; Neutral
+- Furthermore, / Also, / Similarly, / In addition, / Equally significant, ;; Adding information ;; Neutral
+- That is why / As a result / Therefore / For that reason / Given that ;; Purpose or result ;; Neutral
+- Plus, you will receive ... ;;  ;; Warm
+- That's not all. You will also ... ;;  ;; Warm
+- Another issue is ... ;;  ;; Neutral
+- Because of these circumstances, ... ;;  ;; Neutral
+- In addition to those changes, we also ... ;;  ;; Neutral
+- Such issues present us with a challenge. ;;  ;; Neutral
+- That recommendation raises a few issues. ;; Refers back with a pronoun ;; Neutral
+- This is important to us for several reasons. ;;  ;; Neutral
+- Let me clarify. ;;  ;; Neutral
+- One final consideration is ... ;;  ;; Neutral
+!tip Transitions help to build coherence in writing by showing the reader the relationship between ideas. When transition words and phrases appear at the start of the sentence, they often (though not always) are followed by a comma. Be sure to choose the appropriate transition. If you are confused as to whether a word or phrase is a transitional expression, remember that transitional expressions can always be shifted to another place in the sentence without changing the meaning.
+
+@sec price-up | How do I announce a price increase? | Announcing a price increase | When raw materials, exchange rates, freight, regulation or labour costs push prices up | price increase
+!tip Give one main reason per price-increase email, and make three things clear: how much, from when, and what the customer can do (lock in the current rate, renew early).
++ #1 Raw Material Cost Spike ;; Raw material costs ;; Neutral ;; Due to a sharp increase in [raw material], which has risen by [percentage] over the last [timeframe], we are adjusting our pricing on [product line] effective [date]. ;; Due to a sharp increase in steel, which has risen by 18% over the last six months, we are adjusting our pricing on our entire hardware range effective May 1st. ;; Tone: Transparent & Explanatory
++ #2 New Feature / Product Upgrade ;; Product upgrade or new features ;; Warm ;; Because we have added [new features/improvements] that deliver [benefit], we are raising the price of [plan/product] from [old price] to [new price] starting [date]. ;; Because we have added AI-powered analytics and real-time reporting that deliver faster decision-making, we are raising the price of our Pro Plan from $49 to $59 starting June 1st. ;; Tone: Emphatic & Value-Driven
++ #3 General Inflation ;; Inflation or industry-wide increases ;; Formal ;; In response to ongoing inflationary pressures across our industry, we will implement a general price revision of [percentage] across [product/service category], effective [date]. ;; In response to ongoing inflationary pressures across our industry, we will implement a general price revision of 7% across all subscription tiers, effective July 15th. ;; Tone: Formal & Diplomatic
++ #4 Price Lock for Loyal Customers ;; Locking in the old rate for loyal customers ;; Warm ;; Although our standard pricing will increase to [new price] on [date], we are pleased to offer you—as a valued existing customer—the option to lock in your current rate of [old price] until [cut-off date]. ;; Although our standard pricing will increase to $99 on August 1st, we are pleased to offer you—as a valued existing customer—the option to lock in your current rate of $79 until July 31st. ;; Tone: Reassuring & Protective
++ #5 Advance Notice ;; Advance notice with a buffer period ;; Neutral ;; To give you ample time to prepare, we are announcing [number] days in advance that our prices will change from [old price] to [new price], effective [date]—allowing you to renew at the current rate before then. ;; To give you ample time to prepare, we are announcing 60 days in advance that our prices will change from $29 to $34, effective October 1st—allowing you to renew at the current rate before then. ;; Tone: Considerate & Urgent
++ #6 Phased Increase ;; Phased increase ;; Neutral ;; Instead of a single jump, we are implementing a phased increase: [percentage/amount] effective [first date], followed by [second percentage/amount] effective [second date], to ease the transition for you. ;; Instead of a single jump, we are implementing a phased increase: 4% effective March 1st, followed by another 4% effective September 1st, to ease the transition for you. ;; Tone: Strategic & Collaborative
++ #7 Currency Exchange Fluctuation ;; Exchange-rate changes (cross-border) ;; Neutral ;; Due to unfavorable movements in the [currency pair] exchange rate—which has shifted by [percentage] since [date]—we are revising our international pricing to [new price] starting [date]. ;; Due to unfavorable movements in the USD/EUR exchange rate—which has shifted by 12% since last quarter—we are revising our international pricing to €115 starting February 1st. ;; Tone: Factual & Neutral
++ #8 Shipping Cost Surge ;; Freight and shipping costs ;; Direct ;; Rising freight and shipping costs have forced us to raise the delivery-related component of our pricing; therefore, effective [date], the total price for [product] will increase by [amount/percentage]. ;; Rising freight and shipping costs have forced us to raise the delivery-related component of our pricing; therefore, effective April 15th, the total price for bulk orders will increase by 5%. ;; Tone: Apologetic & Direct
++ #9 Regulatory / Compliance Cost ;; Regulatory and compliance costs ;; Formal ;; New [regulation/compliance standard] requirements have added [cost] to our production process; to remain fully compliant, we must adjust our pricing to [new price], effective [date]. ;; New EU sustainability reporting requirements have added $50,000 to our production process; to remain fully compliant, we must adjust our pricing to €220, effective December 1st. ;; Tone: Formal & Authoritative
++ #10 Labor / Wage Cost ;; Labour costs ;; Warm ;; Our team is our greatest asset, and recent wage adjustments to retain top talent have increased our operating costs—so we will be raising our rates by [percentage] on [product/service] starting [date]. ;; Our team is our greatest asset, and recent wage adjustments to retain top talent have increased our operating costs—so we will be raising our rates by 8% on consulting services starting November 1st. ;; Tone: Personable & Honest
+
+@sec policy | How do I announce a policy change? | Announcing a policy change | When company policy, terms of service or a process changes and customers or staff need to know | policy change effective
+!formula Announce → effective date → reason → impact on the reader → what stays the same → contact details
+u We are happy to announce ;; We are pleased to formally announce the implementation of [Policy Name]. ;; Opening Gambit ;; Tone: Formal & Optimistic
+u Please note ;; Please be advised of the following update regarding [Subject Area]. ;; Attention Callout ;; Tone: Authoritative / Direct
+u The new policy will take effect on ;; The revised guidelines will officially go into effect on [Effective Date]. ;; Timeline / Implementation ;; Tone: Clear / Unambiguous
+u Effective immediately ;; Effective as of [Time/Date], the following protocols are now in force. ;; Timeline ;; Tone: Urgent & Decisive
+u The reason for the new change is ;; The primary driver behind this update is [Root Cause or Business Objective]. ;; Stating the Rationale ;; Tone: Direct / Rational
+u Several factors created the need for ;; A convergence of [Factor A], [Factor B], and operational data necessitated this proactive revision. ;; Background Context ;; Tone: Strategic / High-Level
+u Rising costs/changes in the market have forced us to ;; In response to evolving macroeconomic conditions and [Specific Pressure Point], we are implementing necessary adjustments. ;; External Justification ;; Tone: Transparent / Strategic
+u Many customers have asked us to ;; In direct response to repeated client requests for [Feature/Improvement], we have integrated this into the new policy. ;; Origin Story / Validation ;; Tone: Responsive / Customer-Driven
+u Customer satisfaction is our primary concern. ;; Delivering exceptional client value remains the cornerstone of this decision-making process. ;; Core Justification ;; Tone: Empathetic & Client-Centric
+u Previously, we ;; Under our prior framework, [Past Procedure] was standard practice. ;; Historical Context ;; Tone: Factual / Comparative
+u Under the new policy ;; Per these updated guidelines, [New Requirement] will now apply. ;; Framework ;; Tone: Formal / Structured
+u The new policy will mean ;; In practical terms, this policy entails [Action Item or New Process] moving forward. ;; Interpretation ;; Tone: Explanatory / Educational
+u What this policy means to customers is ;; For our valued partners, this translates to [Specific Operational Change]. ;; Impact Clarification ;; Tone: Clarifying / Reassuring
+u This change promises to ;; This strategic adjustment is projected to deliver [Expected Outcome, e.g., streamlined workflows]. ;; Stating Benefits ;; Tone: Confident & Forward-Looking
+u The new policy will provide customers with ;; Moving forward, this policy unlocks enhanced value for customers, specifically through [Specific Benefit]. ;; Value Proposition ;; Tone: Benefit-Driven / Positive
+u Not covered by the new policy is ;; Please note that [Excluded Item/Scenario] falls outside the scope of this revision. ;; Exclusions / Scope ;; Tone: Formal & Precise
+u This policy will not significantly affect ;; This adjustment will have minimal impact on [Unchanged Area/Service], which will continue to operate as usual. ;; Exception / Continuity ;; Tone: Reassuring / Mitigating
+u Customers will still be able to ;; Rest assured, clients retain full access to [Retained Feature/Service] without interruption. ;; Continuity Assurance ;; Tone: Reassuring / Stability-Focused
+u We understand/recognize that ;; We fully recognize that [Specific Customer Concern] requires careful navigation, and we are committed to supporting you through it. ;; Validating Concerns ;; Tone: Empathetic / Acknowledging
+u As we make the change, you will see ;; Throughout this transition, expect to observe [Visible Change A] and [Visible Change B] taking effect progressively. ;; Transition Guidance ;; Tone: Forward-Looking / Informative
+u You are welcome to ;; We invite you to [Optional Action, e.g., opt into the new tier] at your earliest convenience. ;; Action / Permission ;; Tone: Inviting / Supportive
+u We encourage people to ;; We strongly encourage all stakeholders to [Take Action, e.g., review the updated FAQ] to ensure a seamless transition. ;; Recommended Action ;; Tone: Encouraging / Proactive
+u If you have questions, please call ;; For further clarification, please direct your inquiries to [Support Team/Department] at [Phone/Email] or reply directly to this message. ;; Call to Action (CTA) ;; Tone: Supportive / Accessible
+u We reserve the right to change ;; We maintain the discretion to revisit or modify this policy should [Future Conditions] arise, with advance notification provided. ;; Disclaimer / Future Flexibility ;; Tone: Legal / Cautionary
+u We are confident that this change will be a positive one. ;; We are wholly confident in the long-term positive impact of this evolution on your [Operations/Partnership]. ;; Final Reassurance ;; Tone: Assertive / Closing
+
+@sec move | How do I announce a move or new address? | Announcing a new location | When an office, store or warehouse relocates | relocation new address move
+!tip Pick ONE reassurance statement per announcement (e.g., either "no disruption" OR "same quality service" OR "easy to find"). Overloading the reader with all three dilutes the impact. End with a clear call-to-action. If the move requires immediate action (e.g., shipping, visits), lead with the address (Templates 5 & 8). If the move is purely informative, place the address mid-way (Templates 2 & 9) so it feels like a natural update, not a demand.
++ #1 Formal Corporate ;; Formal announcement: board, investors, press release ;; Formal ;; We are pleased to announce that we have officially relocated. Effective [Date], our new address is [Full Address: Street, City, State, ZIP]. The new site will enable us to strengthen our ability to deliver on our strategic goals, and please be reassured that daily operations will not change. ;;  ;; Tone · Best for: Board members, investors, or official press releases
++ #2 Customer-Centric Reassurance ;; Reassuring loyal clients who value consistency ;; Warm ;; We are excited about the future at our new location, now located at [Full Address]. Please be reassured that this move will not affect daily operations—there will be no disruption in service whatsoever—and we will continue to serve you in the way you are accustomed to. ;;  ;; Tone · Best for: Loyal clients who value consistency
++ #3 Growth & Expansion ;; Showing growth ;; Neutral ;; We are pleased to announce our relocation to a larger space at [Full Address]. As we have outgrown our existing location, the new site will enable us to expand our capabilities. As a result of the move, we will be better positioned to serve you and will be expanding our offerings. ;;  ;; Tone · Best for: Showcasing success and future potential
++ #4 Apologetic & Transparent ;; When the move may cause short hiccups ;; Formal ;; We are pleased to announce our new location, effective [Date], at [Full Address]. We do apologize for any inconvenience this transition may cause and deeply appreciate your patience. Please be reassured that we are committed to ensuring no disruption in service throughout this period. ;;  ;; Tone · Best for: When there may be temporary hiccups during the move
++ #5 Operational & Practical ;; Focused on logistics ;; Neutral ;; We are pleased to announce that moving forward, we will be located at [Full Address]. You will find us easy to access, and this change will not affect our daily operations. Please update your records accordingly; we will continue to operate without interruption. ;;  ;; Tone · Best for: Emails that focus heavily on logistics
++ #6 Employee-Focused ;; For internal staff ;; Warm ;; We are excited about the future at our new location, officially moving to [Full Address] on [Date]. We are proud to share that we expect all our employees to remain with us throughout this transition. The new site will strengthen our ability to collaborate, and we appreciate your patience during this exciting chapter. ;;  ;; Tone · Best for: Internal announcements to staff or team morale
++ #7 Strategic Capability ;; Highlighting new capabilities or services ;; Neutral ;; We are pleased to announce our move to a new facility at [Full Address]. The new site will enable us to improve our ability to handle complex client needs. As a result of the move, we will be expanding our capacity while continuing to provide the same level of high-quality customer service you rely on. ;;  ;; Tone · Best for: Highlighting improved efficiency or new services
++ #8 Short & Direct ;; Short version: social media, newsletters ;; Direct ;; We are pleased to announce our new location: [Full Address]. We have outgrown our existing space and are excited for what's ahead. Please be reassured that there will be no disruption in service, and we look forward to welcoming you to our new home. ;;  ;; Tone · Best for: Social media blurbs, newsletters, or quick customer alerts
++ #9 VIP Client ;; For key accounts and long-standing partners ;; Warm ;; We are delighted to announce our move to [Full Address], a space designed specifically to serve you in the way you are accustomed to. We expect all our employees to remain with us, and your dedicated team will continue to provide uninterrupted, high-quality support. We appreciate your continued trust. ;;  ;; Tone · Best for: Top-tier accounts or long-standing partners
++ #10 All-Rounder ;; All-round version for mass emails ;; Neutral ;; We are pleased to announce that we have moved to a new location at [Full Address], effective [Date]. We have outgrown our existing space, and this new site will allow us to better serve you. Please be reassured that we will continue to operate without disruption and maintain the same level of high-quality customer service. We appreciate your patience during the transition. ;;  ;; Tone · Best for: General mass emails that balance growth and reassurance
+
+@tab check | Close & check | | After writing: closings, a pre-send check, common non-native mistakes, reading the subtext.
+
+@sec closing | How do I end the email? | Closings & sign-offs | When the body is done and you need a last line and sign-off | Regards Sincerely closing sign-off
+!formula Closing = a specific next step (who, what, when) + a sign-off
+x We will try our best to solve it. If you have any question, please feel free to contact me. ;; We will send the revised quotation by Wednesday, March 5. Please let me know if that works for you. ;; Problem: "Try our best" sounds non-committal. The closing is fine, but the email lacks a specific next step.
+%Closing lines
+- Please let me know if that works for you. ;;  ;; Neutral
+- Feel free to reach out if you have any questions. ;;  ;; Warm
+- If you have any questions, please reply to me directly. ;;  ;; Neutral
+- We look forward to receiving your feedback. ;; Note: look forward to is followed by -ing ;; Neutral
+%Formal
+- Sincerely, ;; Most common; fits every occasion ;; Formal
+- Respectfully, ;;  ;; Formal
+- Respectfully yours, ;;  ;; Formal
+- Very truly yours, ;;  ;; Formal
+- Cordially, ;;  ;; Formal
+%Professional but warmer
+- Kind regards, ;; Most common; fits every occasion ;; Neutral
+- Regards, ;;  ;; Neutral
+- Best regards, ;;  ;; Neutral
+- With warm regards, ;;  ;; Warm
+- Yours truly, ;;  ;; Neutral
+%Friendly
+- Best wishes, ;;  ;; Warm
+- All the best, ;;  ;; Warm
+- Warmest wishes, ;;  ;; Warm
+- Thanks for your help, ;;  ;; Warm
+!tip Among the most common closings are sincerely and kind regards. They fit all occasions. The closing should reflect the nature of the message, your relationship with the reader, and your personality.
+
+@sec checklist | 30-second pre-send check | Pre-send checklist | Before you hit Send | checklist proofread
+c The subject line states the topic and the action, e.g. ACTION REQUIRED: Complete Annual Compliance Training by Next Friday
+c The first sentence states the purpose (BLUF); background comes after
+c Correct greeting: Mr. / Ms. + surname; names spelled correctly
+c One point per paragraph
+c Specific dates and times instead of soon, ASAP or at the earliest
+c A clear next step: who, what, by when
+c If something went wrong: facts, responsibility and a fix; no emotion, no blame-shifting
+c No common slips: reply to, discuss (no about), contact (no with), look forward to + -ing
+c Consistent tone throughout; no red-flag words like Just, Actually, Obviously
+c The attachment is actually attached
+
+@sec chinglish | Is this correct? Common non-native mistakes | Chinglish check | When you're unsure about grammar or worried about sounding unnatural | Chinglish grammar
+%Verbs & prepositions
+x I am appreciate for your great support on this project. ;; I really appreciate your great support on this project. ;; Appreciate is a verb (so no "am"), and it takes a direct object (so no "for" – you appreciate something, not appreciate for something).
+x I appreciate if you can finish by the deadline. ;; I would appreciate it if you could finish by the deadline. ;; The fixed pattern is "appreciate it if"
+x Please reply my email when you have time. ;; Please reply to my email when you have time. ;; In English, reply needs "to" (reply to someone).
+x If any questions, please reply to me back directly. ;; If you have any questions, please reply to me directly. ;; "Reply" already means "answer back", so drop "back"; also use a full sentence
+x I will discuss about this issue with the team. ;; I will discuss this issue with the team. ;; Discuss takes a direct object (no "about").
+x I will contact with you next week. ;; I will contact you next week. ;; Contact takes a direct object (no "with").
+x We apologize the inconvenience very much. ;; We deeply apologize for the inconvenience. ;; Apologize for something
+x Regarding to your questions about the budget, I have prepared an update. ;; Regarding your questions about the budget, I have prepared an update. / With regard to your questions... ;; Regarding is a preposition itself – it never takes an extra "to". This is a very common slip that instantly flags non-native writing.
+%Verb forms
+x We are looking forward to receive your feedback soon. ;; We look forward to receiving your feedback soon. ;; In "look forward to", the "to" is a preposition, not part of an infinitive. Prepositions must be followed by a noun or a gerund (-ing).
+x I suggest you to review the document carefully. ;; I suggest you review the document carefully. / I suggest reviewing the document carefully. ;; Suggest/recommend never take an infinitive with "to". They take a that-clause with a base verb (subjunctive) or a gerund (-ing).
+x I suggest we should delay the launch. ;; I suggest we delay the launch. ;; Drop "should": a that-clause after suggest takes the base verb.
+x I wish you can attend the meeting tomorrow. ;; I hope you can attend the meeting tomorrow. ;; Wish is for impossible, hypothetical, or unreal situations (e.g., "I wish I were a millionaire"). Hope is for realistic, future possibilities.
+x You should be finish this before the system locks your access next Friday. ;; The training must be completed by next Friday, as the system will automatically lock your access after that date. ;; "Be" can't be followed by a base verb; state the deadline and the consequence
+x Because our finance system occur some problems, so we need delay to 2 days. ;; Due to technical issues with our finance system, we must delay it by 2 days. ;; Don't use "because" and "so" together; "delay by" gives the length of the delay
+%Word choice
+x Dear All Staffs, ;; Dear All Staff, ;; "Staff" is a collective noun; no -s
+x If you have doubt, please feel free to send email to us. ;; If you have questions, please email us. ;; "Doubt" means suspicion, not a question
+x Please revert by 3 PM today. ;; Could you reply by 3 PM today? ;; "Revert" means go back to a previous state, not reply
+x Please do the needful to complete all modules. ;; Please complete all modules by the deadline. ;; "Do the needful" is Indian English and unfamiliar to many UK/US readers
+x Until now, only 45% of employees have completed the training. ;; To date, only 45% of employees have completed the training. ;; "To date" suits formal writing
+x Please refer to the attached link to log in to the system. ;; Please click the link below to log in to the training system. ;; You click a link; you don't "refer to" it
+%Too stiff
+x Please be informed that the meeting has been moved to 3 PM. ;; Please note that the meeting has been moved to 3 PM. / Just a heads-up – the meeting is now at 3 PM. ;; "Please be informed" sounds like a court summons or a formal notice from a bank. In modern business English, it's stiff and unnatural. "Please note" is neutral and professional.
+x In accordance with your request, I have attached the signed contract. ;; As you requested, I've attached the signed contract. / Per your request, I've attached the signed contract. ;; "In accordance with" is reserved for legal documents and official regulations. For everyday colleague/client emails, "as you requested" or "per your request" is crisp, modern, and clear.
+x I am writing this email to inform you that I want to discuss about the new budget policy. ;; I'd like to schedule a time to discuss the new budget policy. ;; Skip the "I am writing this email to inform you" warm-up and get to the point
+x Could you help to confirm the new time works for your team? ;; Could you confirm the new time works for your team? ;; "Help to" is unnecessary
+
+@sec subtext | How will they read this? | Subtext decoder | When you can't read between the lines of their email, or worry yours will be misread | subtext hidden meaning
+!tip In cross-cultural business, differences in culture and communication habits mean we often miss the subtext built into English phrases, in emails and in meetings. That leads to misunderstandings, and to hours spent guessing what the client really means and rewriting the same reply. Under time pressure it's even more stressful, and mistakes still happen. This page decodes the most common phrases so you can look them up on the spot, or browse them to build your cross-cultural instincts.
+!tip Chasing phrases (Per my last email, Just circling back, touch base, Please revert at the earliest, etc.) are under Ask → They haven't replied. How do I chase?
+%When they write this
+? With all due respect... ;; "I strongly disagree and am about to criticize you." ;; 
+? I might be wrong, but... / Just a thought... ;; "I am right, but I'm softening the blow so you don't get defensive." ;; 
+? Thanks in advance ;; "I expect you to do this immediately, you don't have a choice." ;; 
+? To be perfectly honest with you... ;; "I was exaggerating or omitting the truth in my previous sentences." ;; Delete the qualifier entirely. State the raw, plain fact without any preface.
+? Let's take this offline. ;; "I'm uncomfortable documenting this conversation in a traceable channel." ;; Be transparent about the medium shift. Say: “This needs a collaborative whiteboard—grab my Calendly link for a quick 10-min screenshare.”
+%When you write this
+? Does that make sense? ;; "I think you're too slow to understand my brilliant idea." ;; Shift the clarity burden to yourself. Say: “Did I explain that clearly enough?”
+? Just a quick question... ;; "My time is worth more than yours; I'll consume your minutes while pretending it's seconds." ;; Estimate the exact time commitment. Say: “This is a 2-minute ask regarding your onboarding flow.”
+? I hope this email finds you well. ;; "This is a copy-pasted template; I have zero clue about your current situation." ;; Reference their recent digital footprint. Say: “Saw you visited our pricing page yesterday—perfect timing.”
+? We think this would be a great fit for you. ;; "We blast this exact sentence to 10,000 people on our list." ;; Use behavioral specificity. Say: “Because you bookmarked our SEO guide, this tool plugs directly into that exact workflow.”
+? I don't want to spam you, but... ;; "I fully know I'm spamming you, but I'm doing it anyway." ;; Remove the defensive apology. Lead immediately with the value proposition.
+? If you're interested, reply to this email. ;; "All friction is on you; I am offering zero handholding or guidance." ;; Provide a one-click low-friction first step. Say: “Click 'Yes' inside this email, and I'll instantly unlock the bonus module.”
+? We value you as a customer. ;; "This is a generic placeholder spat out by our CRM's drip campaign." ;; Demonstrate value instead of declaring it. Say: “Here's an exclusive template our VIP cohort requested—complimentary.”
+? I'm not trying to sell you anything. ;; "I am absolutely selling, but I'm being dishonest about my intention." ;; Proudly own your commercial intent. Say: “This is a paid tier, but here's why 9 out of 10 users upgrade within the first week.”
+? Sorry for the long email... ;; "I know I just wasted your time, and I feel guilty about it." ;; Put the Bottom Line Up Front (BLUF) in the first sentence. If lengthy, use bullet points. Never apologize; curate.
+? You can always unsubscribe here. ;; "I don't care if you leave; my list metrics are massive anyway." ;; Frame the exit positively. Say: “If this doesn't resonate, click here to adjust your preferences—we hate cluttering your inbox.”
+? As per our records... ;; "This is a robotic, system-generated autopsy of your data; I don't know you." ;; Use conversational, human triggers. Say: “I noticed your free trial concluded yesterday...”
+? Act now before it's too late! ;; "My product can't sell on intrinsic value, so I'm weaponizing cheap FOMO." ;; Use logical, transparent scarcity. Say: “Our implementation slots fill 24 hours before launch—here is the current waitlist count.”
+? We are committed to your success. ;; "Empty corporate fluff that offers zero tangible utility." ;; Point to a specific, hard asset. Say: “Check our new video walkthrough on [Specific Feature X].”
+
+@sec redflag | Red-flag words and plain style | Red-flag words & plain style | When you want your email to sound crisp and confident | just actually obviously try but
+|Red-flag word|The bad subtext|Swap with
+|Just|"I am apologizing for taking up space."|Delete it entirely
+|Actually|"You are wrong, and I am correcting you."|To clarify...
+|Obviously|"You are stupid for not knowing this."|As you may know...
+|Try|"I expect to fail."|I will... / We are aiming to...
+|But after a compliment|"Everything before this was a lie."|And... / At the same time...
+%Verbs are clearer than nouns
+!tip Verbs are clearer and more direct than nouns when expressing action. Avoid nominalising verbs (changing verbs to nouns, e.g. decide to decision, and refer to reference, etc.).
+x The board of directors made a decision to cut staff salaries by 10%. ;; The board of directors decided to cut staff salaries by 10%. ;; made a decision → decided
+x In your email, you made reference to the staff changes in our department. ;; In your email, you referred to the staff changes in our department. ;; made reference to → referred to
+x We will give consideration to your application when we have received all the necessary documents. ;; We will consider your application when we have received all the necessary documents. ;; give consideration to → consider
+
+@tab industry | Industry | | Phrases and full-email examples for trade, HR, and product and service teams.
+
+@sec trade | Trade: quoting, negotiating, complaints | International trade | Quoting overseas clients, negotiating price, or complaining about a shipment | FOB MOQ quotation complaint negotiation
+!tip For meeting and demo phrases see Ask → How do I set up a meeting or demo? For delivery delays see Announce → How do I break bad news or a delay? For asking suppliers for prices see Ask → How do I ask a supplier for a quote?
+%Quotation: include every term
+x The price is 10 USD. ;; We are pleased to quote as follows:\nUnit price: USD 10.00/pc FOB Shenzhen\nMOQ: 500 pcs\nValidity: 30 days\nPayment: 30% T/T deposit, 70% before shipment\nLead time: 15–20 days after deposit ;; Problem: Missing Incoterm, currency, MOQ, validity, payment terms, lead time. It feels incomplete and unprofessional.
+%Quotation lines
+- The above prices include all packing and shipping costs. ;;  ;; Neutral
+- Prices quoted are inclusive of shipping costs. ;;  ;; Formal
+- This quotation is valid until the end of [month, year]. ;; Validity of the quote ;; Neutral
+- Shipment will be within 10 days of receiving your order. ;; Delivery time ;; Neutral
+- Please allow three weeks for delivery. ;;  ;; Neutral
+%Negotiating price
+x Your price is too high. Other suppliers are cheaper. Give me discount. ;; Thank you for your quotation. While we appreciate the quality, your price is above our target. If we increase the order to 2,000 units, could you offer a better price? ;; Problem: Sounds confrontational. English business negotiation usually softens the pushback while still being clear.
+!tip Holding a lower quote from another supplier and want a price match? See template #6 under Ask → How do I ask a supplier for a quote?
+%Complaints
+x You sent wrong goods. We are very angry. This is very bad. ;; We received the shipment on [date] and found that [item] does not match the agreed specification. Please advise how you will resolve this, e.g., replacement or credit note. ;; Problem: Emotion and blame make it harder to solve. English business complaints usually stay factual and focus on the remedy.
+
+@sec hr | HR: full emails, before and after | Human resources | Notices and reminders to all staff or department heads | HR
+m Rescheduling a meeting + discussing budget policy ;; An HR manager writes to a department head to reschedule the quarterly review and discuss a new budget policy ;; Subject: Meeting & Policy\n\nDear Department Head,\n\nI am writing this email to inform you that I want to discuss about the new budget policy. As per the VP's request, we need to align our numbers before the quarterly review.\n\nAlso, please kindly check the updated schedule for the Q3 review. We moved it to next Tuesday. Could you help to confirm the new time works for your team?\n\nPlease advise.\n\nI think we should postpone the strategy session to Friday afternoon to give us more preparation time.\n\nPlease contact me if you have any questions.\n\nPlease revert by 3 PM today.\n\nBest regards,\n[HR Manager] ;; Subject: Q3 Review Schedule & Budget Policy Discussion\n\nDear [Name],\n\nFollowing up on the VP's request, we need to align our numbers before the quarterly review. I'd like to schedule a time to discuss the new budget policy.\n\nAlso, please check the updated schedule for the Q3 review—we moved it to next Tuesday. Could you confirm the new time works for your team?\n\nCould you advise on whether Friday afternoon works for the strategy session? I believe postponing it would give us more preparation time.\n\nFeel free to reach out if you have any questions.\n\nCould you reply by 3 PM Friday?\n\nBest regards,\n[HR Manager] ;; What changed: the subject line names both topics; the "I am writing this email to inform you" warm-up is gone; discuss without about; only one of please / kindly; help to confirm → confirm; a lone "Please advise" became a specific question; revert → reply, with a specific time.
+m Compliance training reminder ;; An HR manager reminds all staff to complete annual compliance training ;; Subject: Training\n\nTo All Employees,\n\nI am writing to remind about the annual compliance training. You should be finish this before the system locks your access next Friday.\n\nAttached herewith please find the user guide for the training portal. Please do the needful to complete all modules at your earliest convenience.\n\nPlease refer to the attached link to log in to the system. If any questions, please reply to me back directly.\n\nUntil now, only 45% of employees have completed the training. I appreciate if you can finish by the deadline to avoid any disruption to your system access.\n\nBest regards,\n[HR Manager] ;; Subject: ACTION REQUIRED: Complete Annual Compliance Training by Next Friday\n\nTo All Employees,\n\nThis is a reminder that the annual compliance training must be completed by next Friday, as the system will automatically lock your access after that date.\n\nPlease find attached the user guide for the training portal. Please complete all modules by the deadline to ensure your system access remains active.\n\nPlease click the link below to log in to the training system. If you have any questions, please reply to me directly.\n\nTo date, only 45% of employees have completed the training. I would appreciate it if you could finish by the deadline to avoid any interruption to your system access.\n\nBest regards,\n[HR Manager] ;; What changed: the subject line flags ACTION REQUIRED and the deadline; remind about → This is a reminder that; herewith and do the needful removed; at your earliest convenience → by the deadline (there is one); reply to me back → reply to me; Until now → To date; I appreciate if → I would appreciate it if.
+m Delayed salary payment ;; Telling all staff this month's salary is two days late ;; Subject: Payrol have update for this month salary\n\nDear All Staffs,\n\nPlease pay attention to that this month salary pay will on July 30th. Because our finance system occur some problems, so we need delay to 2 days.\n\nFor the employees which have bank card is ICBC, you can receive the money at tomorrow morning. Other employees please wait more a few days.\n\nIf you have doubt, please feel free to send email to us. We apologize the inconvenience very much. ;; Subject: Payroll Update for This Month's Salary\n\nDear All Staff,\n\nPlease note that this month's salary payment will be made on July 30th. Due to technical issues with our finance system, we must delay it by 2 days.\n\nFor employees who use ICBC bank accounts, you will receive the funds tomorrow morning. All other employees should expect a few more days.\n\nIf you have questions, please email us. We deeply apologize for the inconvenience. ;; What changed: Payrol spelling; staffs → staff; Please pay attention to that → Please note that; because and so can't be used together; which → who for people; at tomorrow morning → tomorrow morning; doubt → questions; apologize for.
+
+@sec product | Product & service: replying to requests | Product & service | When a customer asks for an on-site visit or advice on using the product | service technician
+%Requests for service
+- Would it be convenient for our technician to visit your office on [13 July] at [10:00 a.m.]? ;;  ;; Neutral
+- We can arrange for our service engineer to visit you within two days of receiving your confirmation. ;;  ;; Neutral
+%Requests for advice
+!tip Use conditional statements for explanation of a problem.
+- Your copier may be jamming because of damp paper. ;; Explains the likely cause ;; Neutral
+- Damp paper could be causing your copier to jam. ;;  ;; Neutral
+- In order to avoid this, store your paper in a dry place. ;; Gives advice ;; Neutral
+- Ensure that the paper is dry so as to avoid this problem. ;;  ;; Neutral
+!tip For sending requested documents see Reply → How do I say yes, or send what they asked for? For replying to a request for a quote, see Trade above.
+
+
+</script>
+<script>
+(function(){
+const QUICK=[
+  ['They haven’t replied','follow'],['We made a mistake','admit'],['I need to say no','decline'],
+  ['A delay or bad news','bad'],['A price increase','price-up'],['Check before sending','checklist']
+];
+const TYPES={'-':'p','+':'tpl','x':'cmp','u':'up','?':'sub','r':'rule','c':'chk','m':'mail'};
+const IMPLICIT={tpl:'Pick a template',p:'Phrases',cmp:'More before & after',up:'Line-by-line upgrades',sub:'Subtext',chk:'Checklist',mail:'Full email examples',rule:'Principles'};
+const SHOW=6;
+
+function sp(s,d){return s.split(d).map(x=>x.trim().replace(/\\n/g,'\n'))}
+function parse(src){
+  const tabs=[];let tab=null,sec=null;
+  for(const raw of src.split('\n')){
+    const line=raw.trim();
+    if(!line||line.startsWith('//'))continue;
+    if(line.startsWith('@tab ')){const f=sp(line.slice(5),'|');tab={id:f[0],zh:f[1],en:f[2],desc:f[3],secs:[]};tabs.push(tab);continue}
+    if(line.startsWith('@sec ')){const f=sp(line.slice(5),'|');sec={id:f[0],zh:f[1],en:f[2],when:f[3]||'',kw:f[4]||'',blocks:[],tab};tab.secs.push(sec);continue}
+    if(!sec)continue;
+    if(line.startsWith('!tip ')){sec.blocks.push({t:'tip',f:[line.slice(5).trim()]});continue}
+    if(line.startsWith('!formula ')){sec.blocks.push({t:'formula',f:[line.slice(9).trim()]});continue}
+    if(line.startsWith('!en ')){sec.blocks.push({t:'en',f:[line.slice(4).trim()]});continue}
+    if(line[0]==='%'){sec.blocks.push({t:'group',f:sp(line.slice(1),'|')});continue}
+    if(line[0]==='|'){const cells=line.split('|').slice(1).map(c=>c.trim());const last=sec.blocks[sec.blocks.length-1];
+      if(last&&last.t==='table')last.rows.push(cells);else sec.blocks.push({t:'table',rows:[cells],f:[]});continue}
+    const ty=TYPES[line[0]];
+    if(ty&&line[1]===' ')sec.blocks.push({t:ty,f:sp(line.slice(2),';;')});
+  }
+  return tabs;
+}
+/* Turn a section's flat blocks into: top (short context) + groups (each a collapsible set). */
+function shape(s){
+  const top=[],groups=[];let g=null;let firstCmp=false;
+  for(const b of s.blocks){
+    if(b.t==='group'){g={zh:b.f[0],en:b.f[1]||'',items:[]};groups.push(g);continue}
+    if(g){g.items.push(b);continue}
+    if(b.t==='formula'||b.t==='tip'||b.t==='table'||b.t==='en'){top.push(b);continue}
+    if(b.t==='cmp'&&!firstCmp){firstCmp=true;top.push(b);continue}
+    let ig=groups.find(x=>x.implicit===b.t);
+    if(!ig){ig={zh:IMPLICIT[b.t]||'Content',en:'',items:[],implicit:b.t};groups.push(ig)}
+    ig.items.push(b);
+  }
+  // implicit groups were created before explicit ones only if content preceded them; keep order of appearance
+  return {top,groups};
+}
+const DATA=parse(document.getElementById('src').textContent);
+const SECS={},TABS={};
+DATA.forEach((t,i)=>{t.n=i+1;TABS[t.id]=t;t.secs.forEach(s=>{SECS[s.id]=s;s.shape=shape(s);
+  s.blocks.forEach(b=>{b.sec=s;b.text=((b.f||[]).join(' ')+' '+(b.rows?b.rows.flat().join(' '):'')).toLowerCase()})})});
+const COUNTABLE=new Set(['p','tpl','cmp','up','sub','mail']);
+let total=0;DATA.forEach(t=>t.secs.forEach(s=>s.blocks.forEach(b=>{if(COUNTABLE.has(b.t))total++})));
+
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=s=>esc(s).replace(/\[([^\]\n]+)\]/g,'<span class="var">[$1]</span>');
+const enNote=t=>'<div class="en-note"><span>EN</span>'+fmt(t)+'</div>';
+const enToggle=()=>'';const _enToggleOld=()=>{const on=!document.body.classList.contains('hide-en');return '<button class="entoggle" data-entoggle aria-pressed="'+on+'"><span class="sw"></span>English notes: '+(on?'on':'off')+'</button>'};
+function setEn(on){document.body.classList.toggle('hide-en',!on);store.set('rk-en',on?'1':'0');document.querySelectorAll('[data-entoggle]').forEach(b=>{b.setAttribute('aria-pressed',on);b.innerHTML='<span class="sw"></span>English notes: '+(on?'on':'off')})}
+const COPY=[];
+const cbtn=t=>{COPY.push(t);return '<button class="cp" data-c="'+(COPY.length-1)+'">Copy</button>'};
+const toneNote=(tone,zh)=>{const parts=[];if(tone)parts.push('<em>'+esc(tone)+'</em>');if(zh)parts.push(esc(zh));return parts.join(' · ')};
+
+function item(b,first){
+  const f=b.f;
+  switch(b.t){
+    case 'tip':return '<div class="blk"><div class="tip">'+fmt(f[0])+'</div></div>';
+    case 'formula':return '<div class="blk"><div class="formula"><small>Formula</small>'+fmt(f[0])+'</div></div>';
+    case 'en':return '<div class="blk">'+enNote(f[0])+'</div>';
+    case 'p':{const z=toneNote(f[2],f[1]);return '<div class="ph"><div class="t">'+fmt(f[0])+'</div>'+(z?'<div class="z">'+z+'</div>':'')+(f[3]?enNote(f[3]):'')+'<div class="act">'+cbtn(f[0])+'</div></div>'}
+    case 'tpl':return '<details class="tpl"><summary><div><b>'+esc(f[1])+'</b> <span>'+esc(f[0])+(f[2]?' · '+esc(f[2]):'')+'</span></div></summary><div class="tbody">'+
+      '<div class="para"><div class="lbl">Template</div><div class="row"><div class="t">'+fmt(f[3])+'</div>'+cbtn(f[3])+'</div></div>'+
+      (f[4]?'<div class="para ex"><div class="lbl">Example</div><div class="row"><div class="t">'+fmt(f[4])+'</div>'+cbtn(f[4])+'</div></div>':'')+(f[5]?'<div class="tone">'+esc(f[5])+'</div>':'')+'</div></details>';
+    case 'cmp':return '<div class="cmp"><div class="r bad"><span class="k">✗ Avoid</span><div class="t">'+fmt(f[0])+'</div></div>'+
+      '<div class="r good"><span class="k">✓ Write this</span><div class="t">'+fmt(f[1])+'</div>'+cbtn(f[1])+'</div>'+(f[2]||f[3]?'<div class="why">'+esc(f[2]||'')+(f[3]?enNote(f[3]):'')+'</div>':'')+'</div>';
+    case 'up':return '<div class="up"><div class="o"><em>'+esc(f[2]||'')+'</em> · Original: '+esc(f[0])+'</div><div class="t">'+fmt(f[1])+'</div>'+(f[3]?'<div class="tone">'+esc(f[3])+'</div>':'')+'<div class="act">'+cbtn(f[1])+'</div></div>';
+    case 'sub':{let fix='';if(f[2]){const q=f[2].match(/[“"]([^”"]+)[”"]/);fix='<div class="fix"><div><small>Better</small>'+fmt(f[2])+'</div>'+(q?cbtn(q[1]):'')+'</div>'}
+      return '<div class="sub"><div class="say">'+fmt(f[0])+'</div><div class="hid">'+esc(f[1])+'</div>'+(f[3]?enNote('Hidden: '+f[3]):'')+fix+(f[4]?enNote('Action: '+f[4]):'')+'</div>'}
+    case 'rule':return '<div class="rule"><b>'+fmt(f[0])+'</b><span>'+esc(f[1]||'')+'</span>'+(f[2]?enNote(f[2]):'')+'</div>';
+    case 'chk':return '<label class="chk"><input type="checkbox"><span>'+fmt(f[0])+'</span></label>';
+    case 'table':{const [h,...r]=b.rows;return '<div class="tbl"><table><thead><tr>'+h.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+r.map(row=>'<tr>'+row.map(c=>'<td>'+fmt(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>'}
+    case 'mail':return '<details class="mail"'+(first?' open':'')+'><summary><b>'+esc(f[0])+'</b><span>'+esc(f[1])+'</span></summary><div class="mailbody">'+
+      '<div class="m bad"><div class="k">✗ Before</div><pre>'+fmt(f[2])+'</pre></div>'+
+      '<div class="m good"><div class="k">✓ After '+cbtn(f[3])+'</div><pre>'+fmt(f[3])+'</pre></div>'+(f[4]?'<div class="notes">'+esc(f[4])+'</div>':'')+'</div></details>';
+  }
+  return '';
+}
+function itemsHTML(list,limit){
+  let firstMail=true,shown=0,out='',hidden='';
+  for(const b of list){
+    const counts=COUNTABLE.has(b.t)||b.t==='chk'||b.t==='rule';
+    let h=item(b,b.t==='mail'&&firstMail);if(b.t==='mail')firstMail=false;
+    if(limit&&counts&&shown>=limit){hidden+=h}else{out+=h;if(counts)shown++}
+  }
+  if(hidden){const n=(hidden.match(/class="(ph|up|cmp|sub|rule|chk)"|<details class="(tpl|mail)"/g)||[]).length;
+    out+='<div class="hid-wrap" hidden>'+hidden+'</div><button class="more" data-more>Show '+n+' more</button>'}
+  return out;
+}
+const countOf=g=>g.items.filter(b=>COUNTABLE.has(b.t)||b.t==='chk'||b.t==='rule').length;
+
+const $=id=>document.getElementById(id);
+const view=$('view'),barin=$('barin');
+let homeQuery='';
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ---------- sidebar ---------- */
+const WIDE=()=>window.matchMedia('(min-width:1000px)').matches;
+function sideOpen(){return document.body.classList.contains('side-open')}
+function setSide(open,remember){
+  document.body.classList.toggle('side-open',open);
+  const b=$('sidebtn');if(b){b.setAttribute('aria-expanded',open);b.textContent=open?'Hide menu':'☰ Menu'}
+  if(remember&&WIDE())store.set('rk-side',open?'1':'0');
+}
+function initSide(){const s=store.get('rk-side');setSide(WIDE()?(s===null?true:s==='1'):false)}
+let sideTab=null;
+function renderSide(curTab,curSec,isComm){
+  if(curTab)sideTab=curTab;
+  const open=sideTab;
+  $('side').innerHTML='<div class="side-in"><div class="side-top"><span>Contents</span><button class="side-x" data-side="close" aria-label="Hide menu">Hide ✕</button></div>'+enToggle()+
+    '<button class="sl'+(!curTab&&!isComm?' on':'')+'" data-nav="home">Home</button>'+
+    '<div class="stree">'+DATA.map(t=>{
+      const ex=t.id===open;
+      return '<div class="snode'+(ex?' ex':'')+'"><button class="st'+(t.id===curTab&&!curSec?' on':'')+'" data-nav="'+t.id+'"><span class="sn">'+t.n+'</span>'+esc(t.zh)+'<span class="sc">'+t.secs.length+'</span></button>'+
+        (ex?'<ol>'+t.secs.map(s=>'<li><button class="sq'+(s.id===curSec?' on':'')+'" data-nav="'+s.id+'">'+esc(s.zh)+'</button></li>').join('')+'</ol>':'')+'</div>'}).join('')+'</div>'+
+    '<button class="sl comm'+(isComm?' on':'')+'" data-nav="community">Ask the Team: Q&A'+(COMM.open?'<span class="badge">'+COMM.open+' open</span>':'')+'</button></div>';
+}
+
+function bar(back,crumb){
+  barin.innerHTML='<button class="icon-btn" id="sidebtn" data-side="toggle" aria-controls="side" aria-expanded="'+sideOpen()+'">'+(sideOpen()?'Hide menu':'☰ Menu')+'</button>'+
+    (back?'<button class="back" data-nav="'+back[0]+'">‹ '+esc(back[1])+'</button>':'')+
+    '<div class="crumb">'+crumb+'</div>'+(back?'<button class="icon-btn" data-nav="home" data-focus="1">Search</button>':'');
+}
+
+function renderHome(focus){
+  COPY.length=0;
+  bar(null,'<b>Business Email Rescue Kit</b>');
+  view.innerHTML='<p class="kicker">'+total+' ready-to-copy phrases</p><h1>What email do you need to write?</h1>'+
+    '<div class="search"><input id="q" type="search" placeholder="Search: chase, apologise, decline, price increase, quote…" autocomplete="off" aria-label="Search"><button class="clr" id="clr" aria-label="Clear" hidden>✕</button></div>'+
+    '<div id="homebody"></div>';
+  const q=$('q');q.value=homeQuery;
+  q.addEventListener('input',()=>{homeQuery=q.value;$('clr').hidden=!q.value;clearTimeout(q._t);q._t=setTimeout(homeBody,150)});
+  $('clr').addEventListener('click',()=>{homeQuery='';q.value='';$('clr').hidden=true;homeBody();q.focus()});
+  $('clr').hidden=!homeQuery;
+  homeBody();
+  if(focus)q.focus();
+}
+function homeBody(){
+  COPY.length=0;
+  const hb=$('homebody');if(!hb)return;const q=homeQuery.trim();
+  if(q){hb.innerHTML=searchHTML(q)+askCTA('Didn’t find what you need?',null);return}
+  hb.innerHTML='<p class="label">Most urgent? Start here</p><div class="quick">'+QUICK.map(([l,id])=>'<button class="chip" data-nav="'+id+'">'+esc(l)+'</button>').join('')+'</div>'+
+    '<p class="label">Or follow the steps of writing an email</p><div class="stages">'+DATA.map(t=>'<button class="stage" data-nav="'+t.id+'"><span class="n">'+t.n+'</span><div><b>'+esc(t.zh)+'</b><span>'+esc(t.desc)+'</span></div></button>').join('')+'</div>'+
+    '<p class="label">None of these?</p><button class="q commcard" data-nav="community"><div class="tx"><b>Ask the team</b><span>Describe your business situation. We answer regularly, and good questions are added to the kit.'+(COMM.open?' '+COMM.open+' question'+(COMM.open>1?'s':'')+' waiting for an answer.':'')+'</span></div><span class="arr">›</span></button>';
+}
+function askCTA(title,secId){
+  return '<div class="next"><button class="q commcard" data-ask="'+(secId||'')+'"><div class="tx"><span>'+esc(title)+'</span><b>Ask the team, we answer regularly</b></div><span class="arr">›</span></button></div>';
+}
+function searchHTML(q){
+  const terms=q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hit=x=>terms.every(t=>x.includes(t));
+  const res=[];
+  DATA.forEach(t=>t.secs.forEach(s=>{
+    const secHit=hit((s.zh+' '+s.en+' '+s.when+' '+s.kw).toLowerCase());
+    const items=s.blocks.filter(b=>COUNTABLE.has(b.t)&&hit(b.text));
+    if(secHit||items.length)res.push({s,t,secHit,items});
+  }));
+  if(!res.length)return '<div class="empty"><b>No results for “'+esc(q)+'”.</b><br>Try another word, such as decline, delay, quote, chase or apologise.</div>';
+  res.sort((a,b)=>b.secHit-a.secHit||b.items.length-a.items.length);
+  return '<p class="label">'+res.length+' matching question'+(res.length>1?'s':'')+'</p><div class="res">'+res.slice(0,8).map(r=>{
+    const preview=r.items.slice(0,2);
+    return '<div class="rcard"><div class="rh"><div><b>'+esc(r.s.zh)+'</b><span>Step '+r.t.n+' · '+esc(r.t.zh)+(r.items.length?' · '+r.items.length+' match'+(r.items.length>1?'es':''):'')+'</span></div><button class="go" data-nav="'+r.s.id+'">Open ›</button></div>'+
+      (preview.length?'<div class="items">'+itemsHTML(preview)+'</div>':'')+'</div>'}).join('')+'</div>';
+}
+function renderStage(t){
+  COPY.length=0;
+  bar(['home','Home'],'Step '+t.n+' · <b>'+esc(t.zh)+'</b>');
+  view.innerHTML='<div class="steps">'+DATA.map(x=>'<i class="'+(x.n<=t.n?'on':'')+'"></i>').join('')+'</div>'+
+    '<p class="kicker">Step '+t.n+' of '+DATA.length+'</p><h1>'+esc(t.zh)+'</h1><p class="lede">'+esc(t.desc)+' Pick the question you are facing now:</p>'+
+    '<div class="qlist">'+t.secs.map(s=>'<button class="q" data-nav="'+s.id+'"><div class="tx"><b>'+esc(s.zh)+'</b><span>'+esc(s.when)+'</span></div><span class="arr">›</span></button>').join('')+'</div>'+
+    (DATA[t.n]?'<div class="next"><button class="q" data-nav="'+DATA[t.n].id+'"><div class="tx"><span>Next step</span><b>'+DATA[t.n].n+' '+esc(DATA[t.n].zh)+'</b></div><span class="arr">›</span></button></div>':'');
+}
+function renderSec(s){
+  COPY.length=0;
+  const t=s.tab,idx=t.secs.indexOf(s),nx=t.secs[idx+1];
+  bar([t.id,t.zh],'Step '+t.n+' '+esc(t.zh)+' · <b>'+(idx+1)+' / '+t.secs.length+'</b>');
+  const {top,groups}=s.shape;
+  view.innerHTML='<p class="kicker">'+esc(t.zh)+' · Question '+(idx+1)+' of '+t.secs.length+'</p><h1>'+esc(s.zh)+'<span class="en">'+esc(s.en)+'</span></h1>'+
+    (s.when?'<p class="when"><b>When to use: </b>'+esc(s.when)+'</p>':'')+enToggle()+
+    (top.length?'<div class="top">'+top.map(b=>b.t==='formula'?'<div class="formula"><small>Formula</small>'+fmt(b.f[0])+'</div>':b.t==='tip'?'<div class="tip">'+fmt(b.f[0])+'</div>':b.t==='en'?enNote(b.f[0]):item(b)).join('')+'</div>':'')+
+    (groups.length?'<p class="label">'+(groups.length>1?'Pick a category to see the phrases (one opens at a time)':'Open to see the phrases')+'</p><div class="groups">'+groups.map((g,i)=>{const n=countOf(g);
+      return '<details class="grp" name="grp"'+(i===0?' open':'')+'><summary><div class="tx"><b>'+esc(g.zh)+'</b>'+(g.en?'<span>'+esc(g.en)+'</span>':'')+'</div>'+(n?'<span class="cnt">'+n+'</span>':'')+'<span class="chev">›</span></summary><div class="items">'+itemsHTML(g.items,SHOW)+'</div></details>'}).join('')+'</div>':'')+
+    '<div class="next">'+(nx?'<button class="q" data-nav="'+nx.id+'"><div class="tx"><span>Next question in this step</span><b>'+esc(nx.zh)+'</b></div><span class="arr">›</span></button>':'')+
+    '<button class="q plain" data-nav="'+t.id+'"><div class="tx"><span>Back to</span><b>Step '+t.n+' '+esc(t.zh)+': all questions</b></div><span class="arr">›</span></button></div>'+
+    askCTA('Not what you needed?',s.id);
+}
+
+/* ---------- community (shared db) ---------- */
+const COMM={db:null,user:null,me:null,admin:false,write:null,state:'loading',qs:[],ans:{},open:0,filter:'all',ctx:null,draft:null,busy:false,readonly:false,names:{}};
+const STATUS={open:['Open','s-open'],answered:['Answered','s-ans'],added:['Added to the kit','s-add']};
+const statusOf=id=>(COMM.ans[id]&&STATUS[COMM.ans[id].status]?COMM.ans[id].status:'open');
+const dateZh=iso=>{try{return new Date(iso).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}catch(e){return ''}};
+function recount(){COMM.open=COMM.qs.filter(q=>statusOf(q.id)==='open').length}
+
+async function initComm(){
+  try{
+    if(!window.claude||typeof window.claude.use!=='function'){COMM.state='off';refreshComm();return}
+    const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+    if(!db){COMM.state='off';refreshComm();return}
+    COMM.db=db;COMM.user=user;
+    if(user){const [id,adm,w]=await Promise.all([user.id(),user.canEdit(),user.can('data.write')]);COMM.me=id;COMM.admin=!!adm;COMM.write=w}
+    db.collection('questions').orderBy('createdAt','desc').limit(500).onSnapshot(snap=>{
+      COMM.qs=snap.docs.map(d=>Object.assign({id:d.id},d.data()));COMM.state='ready';recount();refreshComm();
+    },err=>{COMM.state='error';refreshComm()});
+    db.collection('answers').limit(1000).onSnapshot(snap=>{
+      const a={};snap.docs.forEach(d=>{a[d.id]=d.data()});COMM.ans=a;recount();refreshComm();
+    },()=>{});
+  }catch(e){COMM.state='off';refreshComm()}
+}
+function refreshComm(){
+  const h=(location.hash||'').slice(1);
+  if(h==='community'){const y=window.scrollY;const keep=captureForm();renderComm();restoreForm(keep);window.scrollTo(0,y)}
+  else if(!h){const hb=$('homebody');if(hb&&!homeQuery.trim())homeBody()}
+  renderSide(curRoute.tab,curRoute.sec,h==='community');
+}
+function captureForm(){const f=$('askform');if(!f)return null;return{stage:$('a-stage').value,title:$('a-title').value,body:$('a-body').value,anon:$('a-anon').checked,open:!$('askbox').hidden,
+  ans:[...document.querySelectorAll('.ansform')].map(x=>({id:x.dataset.q,text:x.querySelector('textarea').value,st:x.querySelector('select').value,open:x.closest('details').open}))}}
+function restoreForm(k){if(!k||!$('askform'))return;$('a-stage').value=k.stage;$('a-title').value=k.title;$('a-body').value=k.body;$('a-anon').checked=k.anon;$('askbox').hidden=!k.open;$('askopen').hidden=k.open;
+  k.ans.forEach(a=>{const x=document.querySelector('.ansform[data-q="'+a.id+'"]');if(x){x.querySelector('textarea').value=a.text;x.querySelector('select').value=a.st;x.closest('details').open=a.open}})}
+
+function renderComm(){
+  COPY.length=0;
+  bar(['home','Home'],'<b>Ask the Team</b> · questions & answers');
+  const canPost=COMM.state==='ready'&&COMM.me!==null&&COMM.write!==false&&!COMM.readonly;
+  let note='';
+  if(COMM.state==='loading')note='<div class="notice">Connecting…</div>';
+  else if(COMM.state==='off')note='<div class="notice">This is the offline edition. Ask the Team needs an internet connection: open the online kit to ask a question. Everything else works offline.</div>';
+  else if(COMM.state==='error')note='<div class="notice">Ask the Team is unavailable right now. Refresh the page later to try again.</div>';
+  else if(!canPost)note='<div class="notice">You can browse questions and answers. To ask a question, the kit’s owner needs to give you Contributor access.</div>';
+  const ctx=COMM.ctx&&SECS[COMM.ctx];
+  const form=canPost?('<button class="q commcard" id="askopen" data-askopen'+(ctx?' hidden':'')+'><div class="tx"><b>Ask a question</b><span>One question at a time; the more specific, the better the answer</span></div><span class="arr">＋</span></button>'+
+    '<form id="askform" class="askform" novalidate><div id="askbox"'+(ctx?'':' hidden')+'>'+
+    (ctx?'<p class="from">From the page “'+esc(ctx.zh)+'”</p>':'')+
+    '<label for="a-title">What situation are you in?<em>Required</em></label><input id="a-title" maxlength="120" placeholder="e.g. A client wants a 20% discount. How do I politely offer only 10%?" required>'+
+    '<label for="a-body">More detail <em>Optional</em></label><textarea id="a-body" maxlength="1000" rows="4" placeholder="What you want to say, your draft, or the line in their email you are unsure about"></textarea>'+
+    '<label for="a-stage">Which step of the email is this?</label><select id="a-stage"><option value="">Not sure</option>'+DATA.map(t=>'<option value="'+t.id+'"'+(ctx&&ctx.tab.id===t.id?' selected':'')+'>'+t.n+' '+esc(t.zh)+'</option>').join('')+'</select>'+
+    '<label class="inline"><input type="checkbox" id="a-anon"> Ask anonymously (hide my name)</label>'+
+    '<p class="err" id="a-err" hidden></p><div class="formact"><button type="submit" class="primary" id="a-submit">Submit question</button><button type="button" class="ghost" data-askcancel>Close</button></div></div></form>'):'';
+  const qs=COMM.qs,n={all:qs.length,open:0,answered:0};
+  qs.forEach(q=>{const s=statusOf(q.id);if(s==='open')n.open++;else n.answered++});
+  const list=qs.filter(q=>COMM.filter==='all'||(COMM.filter==='open'?statusOf(q.id)==='open':statusOf(q.id)!=='open'));
+  const seg=COMM.state==='ready'?'<div class="seg" role="tablist">'+[['all','All'],['open','Open'],['answered','Answered']].map(([k,l])=>'<button role="tab" aria-selected="'+(COMM.filter===k)+'" data-filter="'+k+'">'+l+' <span>'+n[k]+'</span></button>').join('')+'</div>':'';
+  const cards=COMM.state!=='ready'?'':(!qs.length?'<div class="empty"><b>No questions yet.</b><br>Your problem is probably someone else’s too. Be the first to ask.</div>':
+    (!list.length?'<div class="empty">No questions in this category yet.</div>':'<div class="qcards">'+list.map(qCard).join('')+'</div>'));
+  view.innerHTML='<p class="kicker">Ask the Team</p><h1>Can’t find the right words? Ask here</h1>'+
+    '<p class="lede">Describe the business situation or email problem you’re stuck on. We answer regularly, and questions we take up become new content in the kit.</p>'+
+    '<div class="commtop">'+note+form+'</div>'+(COMM.state==='ready'?'<p class="label">Questions from everyone</p>'+seg:'')+cards;
+  fillNames();
+}
+function qCard(q){
+  const st=statusOf(q.id),a=COMM.ans[q.id],t=TABS[q.stage],from=SECS[q.from];
+  const mine=COMM.me&&q.author===COMM.me;
+  const meta=[t?('Step '+t.n+' '+esc(t.zh)):'',from?('from “'+esc(from.zh)+'”'):'',dateZh(q.createdAt)].filter(Boolean).join(' · ');
+  const who=q.author?'<span class="who" data-uid="'+esc(q.author)+'">'+(mine?'Me':'…')+'</span>':'<span class="who">Anonymous</span>';
+  let html='<article class="qc"><div class="qh"><span class="pill '+STATUS[st][1]+'">'+STATUS[st][0]+'</span><span class="meta">'+who+' · '+meta+'</span></div>'+
+    '<h3>'+esc(q.title||'')+'</h3>'+(q.body?'<p class="qb">'+esc(q.body)+'</p>':'');
+  if(a&&a.text)html+='<div class="ans"><div class="al">Answer'+(a.at?' · '+dateZh(a.at):'')+'</div><p>'+fmt(a.text)+'</p></div>';
+  if(COMM.admin){
+    html+='<details class="adm"><summary>'+(a&&a.text?'Edit answer':'Answer this question')+' (visible to admins only)</summary><div class="ansform" data-q="'+esc(q.id)+'">'+
+      '<label for="ans-'+esc(q.id)+'">Answer</label><textarea id="ans-'+esc(q.id)+'" rows="5" maxlength="3000" placeholder="Write the recommended phrases; text in [square brackets] is highlighted as fill-in">'+esc(a&&a.text||'')+'</textarea>'+
+      '<label for="st-'+esc(q.id)+'">Status</label><select id="st-'+esc(q.id)+'"><option value="answered"'+(a&&a.status==='answered'?' selected':'')+'>Answered</option><option value="added"'+(a&&a.status==='added'?' selected':'')+'>Added to the kit</option><option value="open"'+(a&&a.status==='open'?' selected':'')+'>Back to open</option></select>'+
+      '<div class="formact"><button class="primary" data-saveans="'+esc(q.id)+'">Save answer</button><button class="ghost danger" data-delq="'+esc(q.id)+'">Delete question</button></div></div></details>';
+  }else if(mine&&st==='open'){
+    html+='<div class="formact"><button class="ghost danger" data-delq="'+esc(q.id)+'">Withdraw my question</button></div>';
+  }
+  return html+'</article>';
+}
+async function fillNames(){
+  const els=[...document.querySelectorAll('.who[data-uid]')];if(!els.length||!COMM.user)return;
+  const ids=[...new Set(els.map(e=>e.dataset.uid))];
+  let ps={};try{ps=await COMM.user.profiles(ids)}catch(e){}
+  els.forEach(e=>{const p=ps[e.dataset.uid];if(p&&p.isMe)e.textContent='Me';else e.textContent=(p&&p.name)||'A colleague'});
+}
+async function submitQ(){
+  if(COMM.busy)return;
+  const title=$('a-title').value.trim(),body=$('a-body').value.trim(),stage=$('a-stage').value,anon=$('a-anon').checked,err=$('a-err');
+  if(title.length<4){err.textContent='Describe your situation in one sentence (at least 4 characters).';err.hidden=false;$('a-title').focus();return}
+  err.hidden=true;COMM.busy=true;$('a-submit').textContent='Submitting…';$('a-submit').disabled=true;
+  const doc={title:title.slice(0,120),body:body.slice(0,1000),stage:stage||'',from:COMM.ctx||'',createdAt:new Date().toISOString()};
+  if(!anon&&COMM.me)doc.author=COMM.me;
+  try{await COMM.db.collection('questions').doc().set(doc);COMM.ctx=null;toast('Submitted. We answer regularly, so check back soon');
+    $('a-title').value='';$('a-body').value='';$('askbox').hidden=true;$('askopen').hidden=false;}
+  catch(e){const c=e&&e.code;
+    if(c==='invalid_argument'){COMM.readonly=true;err.textContent='You don’t have permission to ask yet. Ask the kit’s owner for Contributor access.'}
+    else if(c==='quota_exceeded')err.textContent='The question limit has been reached. Ask an admin to clear old questions.';
+    else if(c==='resource_exhausted')err.textContent='Too many submissions. Wait a moment and try again.';
+    else err.textContent='Couldn’t submit. Check your connection and try again; your text is still here.';
+    err.hidden=false}
+  finally{COMM.busy=false;const b=$('a-submit');if(b){b.textContent='Submit question';b.disabled=false}}
+}
+async function saveAns(qid,btn){
+  const box=document.querySelector('.ansform[data-q="'+qid+'"]');const text=box.querySelector('textarea').value.trim(),status=box.querySelector('select').value;
+  if(status!=='open'&&!text){toast('Write the answer first');return}
+  btn.disabled=true;btn.textContent='Saving…';
+  try{await COMM.db.doc('answers/'+qid).set({text:text.slice(0,3000),status,at:new Date().toISOString(),by:COMM.me||''});toast('Answer saved and visible to everyone')}
+  catch(e){toast(e&&e.code==='invalid_argument'?'You don’t have permission to answer':'Couldn’t save. Try again.')}
+  finally{btn.disabled=false;btn.textContent='Save answer'}
+}
+async function delQ(qid,btn){
+  if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='Click again to confirm';setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent=COMM.admin?'Delete question':'Withdraw my question'}},4000);return}
+  btn.disabled=true;
+  try{await COMM.db.doc('questions/'+qid).delete();if(COMM.ans[qid])await COMM.db.doc('answers/'+qid).delete().catch(()=>{});toast('Deleted')}
+  catch(e){btn.disabled=false;toast('Couldn’t delete. Try again.')}
+}
+
+/* ---------- routing ---------- */
+let curRoute={tab:null,sec:null};
+function route(){
+  const h=(location.hash||'').slice(1);
+  if(TABS[h]){curRoute={tab:h,sec:null};renderStage(TABS[h])}
+  else if(SECS[h]){curRoute={tab:SECS[h].tab.id,sec:h};renderSec(SECS[h])}
+  else if(h==='community'){curRoute={tab:null,sec:null};renderComm()}
+  else{curRoute={tab:null,sec:null};renderHome(window._focusSearch)}
+  renderSide(curRoute.tab,curRoute.sec,h==='community');
+  if(!WIDE())setSide(false);
+  window._focusSearch=false;
+  window.scrollTo(0,0);
+}
+function nav(id,focus){
+  window._focusSearch=!!focus;
+  const target=id==='home'?'':id;
+  if((location.hash||'').slice(1)===target){route();return}
+  try{location.hash=target}catch(e){route()}
+  if(!target){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}route()}
+}
+window.addEventListener('hashchange',route);
+
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2000)}
+function copyText(text,btn){
+  const done=()=>{btn.textContent='Copied';btn.classList.add('done');toast('Copied. Remember to fill in the yellow [brackets]');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done')},1500)};
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);
+    if(ok)done();else toast('Couldn’t copy automatically. Select the text and copy it.')};
+  try{navigator.clipboard.writeText(text).then(done,fallback)}catch(e){fallback()}
+}
+document.addEventListener('click',e=>{
+  const c=e.target.closest('.cp');if(c){e.preventDefault();copyText(COPY[+c.dataset.c],c);return}
+  const m=e.target.closest('[data-more]');if(m){const w=m.previousElementSibling;w.hidden=false;w.replaceWith(...w.childNodes);m.remove();return}
+  const et=e.target.closest('[data-entoggle]');if(et){setEn(document.body.classList.contains('hide-en'));return}
+  const sd=e.target.closest('[data-side]');if(sd){setSide(sd.dataset.side==='toggle'?!sideOpen():false,true);return}
+  if(e.target.id==='scrim'){setSide(false,false);return}
+  const ak=e.target.closest('[data-ask]');if(ak){COMM.ctx=ak.dataset.ask||null;nav('community');return}
+  const ao=e.target.closest('[data-askopen]');if(ao){$('askbox').hidden=false;ao.hidden=true;$('a-title').focus();return}
+  const ac=e.target.closest('[data-askcancel]');if(ac){$('askbox').hidden=true;$('askopen').hidden=false;COMM.ctx=null;const f=document.querySelector('.from');if(f)f.remove();return}
+  const fl=e.target.closest('[data-filter]');if(fl){COMM.filter=fl.dataset.filter;const keep=captureForm();renderComm();restoreForm(keep);return}
+  const sa=e.target.closest('[data-saveans]');if(sa){e.preventDefault();saveAns(sa.dataset.saveans,sa);return}
+  const dq=e.target.closest('[data-delq]');if(dq){e.preventDefault();delQ(dq.dataset.delq,dq);return}
+  const n=e.target.closest('[data-nav]');if(n){nav(n.dataset.nav,n.dataset.focus);return}
+});
+document.addEventListener('submit',e=>{if(e.target.id==='askform'){e.preventDefault();submitQ()}});
+/* one group open at a time (fallback for browsers without <details name>) */
+document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('details.grp')&&d.open){document.querySelectorAll('details.grp[open]').forEach(o=>{if(o!==d)o.open=false});
+  const r=d.getBoundingClientRect();if(r.top<70)d.scrollIntoView({block:'start',behavior:'smooth'})}},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(sideOpen()&&!WIDE()){setSide(false);return}}});
+window.matchMedia('(min-width:1000px)').addEventListener('change',initSide);
+
+initSide();
+if(store.get('rk-en')==='0')document.body.classList.add('hide-en');
+route();
+initComm();
+})();
+</script>
+
+</body>
+</html>
